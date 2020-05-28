@@ -1,0 +1,15 @@
+mskaiagnt_workflow.pptx
+bin
+build
+demo.sh
+dist
+dxtools.conf.develop
+include
+lib
+output/demobackup
+output
+share
+mskai/__pycache__
+mskai/*.pyc
+*.pyc
+mskai/output
