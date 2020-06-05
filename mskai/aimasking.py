@@ -29,8 +29,6 @@ class aimasking():
 
         if "mock" in kwargs.keys():
             self.mock = kwargs['mock']
-        if "jobid" in kwargs.keys():
-            self.jobid = kwargs['jobid']
         if "jobname" in kwargs.keys():
             self.jobname = kwargs['jobname']            
         if "envname" in kwargs.keys():
@@ -72,31 +70,12 @@ class aimasking():
             dictobj = list(reader)
             return dictobj
 
-    def filter_dict(self, mydictname, myjobid, myenvname):
-        filtereddata = filter(lambda row: (str(myjobid) == row['jobid'] and myenvname == row['environmentname']),
-                              mydictname)
-        return list(filtereddata)
-
-    def filter_dict_unqjoblist_unused(self, mydictname, myjobid, myenvname):
-        filtereddata = mydictname
-        newfiltereddata = []
-        for row in filtereddata:
-            del row['ip_address']
-            newfiltereddata.append(row)
-        filtereddatafinal1 = filter(lambda row: (str(myjobid) == row['jobid'] and myenvname == row['environmentname']),
-                                    newfiltereddata)
-        filtereddatafinal2 = list({v['jobid']: v for v in filtereddatafinal1}.values())
-        filtereddataR = filtereddatafinal2
-        return list(filtereddataR)
-
     def unqlist(self, mydict, ignore_field):
         return [dict(data) for data in
                 sorted(set(tuple((key, value) for key, value in row.items() if key != ignore_field) for row in mydict))]
 
-    def get_jobreqlist(self, mydictname, myjobid, myenvname):
-        filtereddatafinal1 = filter(lambda row: (str(myjobid) == row['jobid'] and myenvname == row['environmentname']),
-                                    mydictname)
-        # filtereddatafinal2 = list({v['jobid']:v for v in filtereddatafinal1}.values())
+    def get_jobreqlist(self, mydictname, myjobname, myenvname):
+        filtereddatafinal1 = filter(lambda row: (myjobname == row['jobname'] and myenvname == row['environmentname']),mydictname)
         filtereddataQ = filtereddatafinal1
         return list(filtereddataQ)
     
@@ -328,8 +307,8 @@ class aimasking():
         headers = {'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': '{0}'.format(api_token)}
         api_url = '{0}{1}'.format(api_url_base, apicall)
         response = requests.post(api_url, headers=headers, json=body)
-        print(response)
-        data = json.loads(response.content.decode('utf-8'))
+        #print(response)
+        #data = json.loads(response.content.decode('utf-8'))
         if response.status_code == 200:
             data = json.loads(response.content.decode('utf-8'))
             return data
@@ -346,7 +325,7 @@ class aimasking():
     def run_job(self):
         if self.config.debug:
             print_debug("Parameter List:")
-            print_debug("  jobid   = {}".format(self.jobid))
+            print_debug("  jobname = {}".format(self.jobname))
             print_debug("  envname = {}".format(self.envname))
             print_debug("  run     = {}".format(self.run))
         # print_debug("  password= {}".format(self.password))
@@ -376,10 +355,10 @@ class aimasking():
 
         joblistunq = self.unqlist(job_list, 'ip_address')
         print_debug("joblistunq:\n{}".format(joblistunq))
-        jobreqlist = self.get_jobreqlist(joblistunq, self.jobid, self.envname)
+        jobreqlist = self.get_jobreqlist(joblistunq, self.jobname, self.envname)
         print_debug("jobreqlist:\n{}".format(jobreqlist))
         
-        engine_pool_for_job = self.get_jobreqlist(job_list, self.jobid, self.envname)
+        engine_pool_for_job = self.get_jobreqlist(job_list, self.jobname, self.envname)
         print_debug("engine_pool_for_job:\n{}\n".format(engine_pool_for_job))
         for job in engine_pool_for_job:
             print_debug(job)
@@ -387,8 +366,7 @@ class aimasking():
         bannertext = banner()
         print(" ")
         print((colored(bannertext.banner_sl_box(text="Requirements:"), 'yellow')))
-        print(' Jobid     = {}'.format(self.jobid))
-        print(' Jobid     = {}'.format(self.jobname))
+        print(' Jobname   = {}'.format(self.jobname))
         print(' Env       = {}'.format(self.envname))
         print(' MaxMB     = {} MB'.format(jobreqlist[0]['jobmaxmemory']))
         print(' ReserveMB = {} MB'.format(jobreqlist[0]['reservememory']))
@@ -504,7 +482,7 @@ class aimasking():
                                                                        round(int(ind['maxavailablememory'])),
                                                                        ind['cpu']), 'red'))
             print(" ")
-            print(" All engines are busy. Running job# {} of environment {} may cause issues.".format(self.jobid,
+            print(" All engines are busy. Running job {} of environment {} may cause issues.".format(self.jobname,
                                                                                                        self.envname))
             print(" Existing jobs may complete after sometime and create additional capacity to execute new job.")
             print(" Please retry later.")
@@ -570,24 +548,23 @@ class aimasking():
             if self.run:
                 apikey = self.get_auth_key(engine_name)
                 # print(apikey)
-                job_exec_response = self.exec_job(engine_name, apikey, self.jobid)
+                jobid = self.find_job_id(self.jobname, self.envname, engine_name)
+                job_exec_response = self.exec_job(engine_name, apikey, jobid)
                 if job_exec_response is not None:
                     if job_exec_response['status'] == 'RUNNING':
                         executionId = job_exec_response['executionId']
-                        # print(colored(" Execution of Masking job# {} with execution ID {} on Engine {} is in progress".format(self.jobid,executionId,engine_name),'green'))
                         print_green_on_white = lambda x: cprint(x, 'blue', 'on_white')
                         print_green_on_white(
                             " Execution of Masking job# {} with execution ID {} on Engine {} is in progress".format(
-                                self.jobid, executionId, engine_name))
+                                jobid, executionId, engine_name))
                     else:
-                        # print(colored(" Execution of Masking job# {} on Engine {} failed".format(self.jobid,engine_name),'red'))
                         print_red_on_white = lambda x: cprint(x, 'red', 'on_white')
                         print_red_on_white(
-                            " Execution of Masking job# {} on Engine {} failed".format(self.jobid, engine_name))
+                            " Execution of Masking job# {} on Engine {} failed".format(jobid, engine_name))
                 else:
                     print_red_on_white = lambda x: cprint(x, 'red', 'on_white')
                     print_red_on_white(
-                        " Execution of Masking job# {} on Engine {} failed".format(self.jobid, engine_name))
+                        " Execution of Masking job# {} on Engine {} failed".format(jobid, engine_name))
             print(" ")
 
     def pull_joblist(self):
@@ -744,8 +721,10 @@ class aimasking():
         tgt_engine_name = self.tgtmskengname
         src_env_name = self.srcenvname
         tgt_env_name = self.tgtenvname
-        src_env_id = 2
-        tgt_env_id = 2
+        src_env_id = self.find_env_id(self.srcenvname, self.srcmskengname)
+        tgt_env_id = self.find_env_id(self.tgtenvname, self.tgtmskengname)
+        print_debug("Src Env Id = {}, Tgt Env Id = {}".format(src_env_id,tgt_env_id))
+
         srcapikey = self.get_auth_key(src_engine_name)
         if srcapikey is not None:
             syncobjapicall = "syncable-objects?page_number=1&object_type=ENVIRONMENT"
@@ -759,11 +738,9 @@ class aimasking():
                     
                     tgtapikey = self.get_auth_key(tgt_engine_name)
                     tgtapicall = "import?force_overwrite=true&environment_id={}".format(tgt_env_id)
-                    print(tgtapikey)
-                    print(tgtapicall)
                     tgtapiresponse = self.post_api_response1(tgt_engine_name, tgtapikey, tgtapicall, srcapiresponse, port=80)                
-                    print(tgtapiresponse)
-
+                    print(" Environment synced successfully. Please update password for connectors in this environment using GUI")
+    
         else:
             print ("Error connecting source engine {}".format(srcmskengname))
 
@@ -773,12 +750,12 @@ class aimasking():
         src_env_name = self.srcenvname
         tgt_env_name = self.tgtenvname
         src_job_name = self.srcjobname
-        src_env_id = 2
-        tgt_env_id = 2
-        src_job_id = 6
+        src_env_id = self.find_env_id(self.srcenvname, self.srcmskengname)
+        tgt_env_id = self.find_env_id(self.tgtenvname, self.tgtmskengname)
+        src_job_id = self.find_job_id(self.srcjobname, self.srcenvname, self.srcmskengname)
+        print_debug("Src Env Id = {}, Tgt Env Id = {},Src Job Id = {}".format(src_env_id,tgt_env_id,src_job_id))
         
-        srcapikey = self.get_auth_key(src_engine_name)
-        
+        srcapikey = self.get_auth_key(src_engine_name)        
         if srcapikey is not None:
             syncobjapicall = "syncable-objects?page_number=1&object_type=MASKING_JOB"
             syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
@@ -792,27 +769,48 @@ class aimasking():
                     
                     tgtapikey = self.get_auth_key(tgt_engine_name)
                     tgtapicall = "import?force_overwrite=true&environment_id={}".format(tgt_env_id)
-                    print(tgtapikey)
-                    print(tgtapicall)
+                    #print(tgtapikey)
+                    #print(tgtapicall)
                     tgtapiresponse = self.post_api_response1(tgt_engine_name, tgtapikey, tgtapicall, srcapiresponse, port=80)                
-                    print(tgtapiresponse)
+                    #print(tgtapiresponse)
+                    print(" Job synced successfully. Please update password for connectors of this job using GUI")
 
         else:
             print ("Error connecting source engine {}".format(srcmskengname))
 
-    def find_job_id(self, jobname, engine_name):
+    def find_job_id(self, jobname, paramenvname, engine_name):
         apikey = self.get_auth_key(engine_name)
+        i = 0
         if apikey is not None:
             apicall = "environments?page_number=1"
             envlist_response = self.get_api_response(engine_name, apikey, apicall)
-            f = open(self.joblistfile, "a")
             for envname in envlist_response['responseList']:
-                jobapicall = "masking-jobs?page_number=1&environment_id={}".format(envname['environmentId'])
-                joblist_response = self.get_api_response(engine_name, apikey, jobapicall)
-                joblist_responselist = joblist_response['responseList']
-                for joblist in joblist_responselist:
-                    f.write("{},{},{},{},{},{},{}\n".format(joblist['maskingJobId'], joblist['jobName'],
-                                                            joblist['maxMemory'], '0', envname['environmentId'],
-                                                            envname['environmentName'], engine_name))
-            f.close()
-            print("Job list for engine {} successfully generated in file {}".format(self.mskengname, self.joblistfile))
+                if envname['environmentName'] == paramenvname:
+                    jobapicall = "masking-jobs?page_number=1&environment_id={}".format(envname['environmentId'])
+                    joblist_response = self.get_api_response(engine_name, apikey, jobapicall)
+                    joblist_responselist = joblist_response['responseList']
+                    for joblist in joblist_responselist:
+                        if joblist['jobName'] == jobname:
+                            i = 1
+                            print_debug("Job ID = {}".format(joblist['maskingJobId']))
+                            return joblist['maskingJobId']
+            if i == 0:
+                print("Error unable to find job id for jobname {} and environment {}".format(jobname,paramenvname))
+        else:
+            print("Error connecting engine {}".format(engine_name))
+
+    def find_env_id(self, paramenvname, engine_name):
+        apikey = self.get_auth_key(engine_name)
+        i = 0
+        if apikey is not None:
+            apicall = "environments?page_number=1"
+            envlist_response = self.get_api_response(engine_name, apikey, apicall)
+            for envname in envlist_response['responseList']:
+                if envname['environmentName'] == paramenvname:
+                    i = 1
+                    print_debug("env id = {}".format(envname['environmentId']))
+                    return envname['environmentId']
+            if i == 0:
+                print("Error unable to find env id for environment {}".format(paramenvname))
+        else:
+            print("Error connecting engine {}".format(engine_name))

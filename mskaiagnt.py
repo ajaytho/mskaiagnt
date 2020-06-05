@@ -185,7 +185,7 @@ def sync_job(config, srcmskengname, srcenvname, srcjobname, tgtmskengname, tgten
         globals.initialize()
         globals.debug = config.debug
         print_debug('Debug mode enabled')
-        print_debug('Parameter jobid = {0}'.format(jobid))
+        print_debug('Parameter jobname = {0}'.format(srcjobname))
         print_debug('envname = {0}'.format(envname))
 
     try:
@@ -225,8 +225,10 @@ def sync_env(config, srcmskengname, srcenvname, tgtmskengname, tgtenvname, passw
         globals.initialize()
         globals.debug = config.debug
         print_debug('Debug mode enabled')
-        print_debug('Parameter jobid = {0}'.format(jobid))
-        print_debug('envname = {0}'.format(envname))
+        print_debug('Src Engine  = {0}'.format(srcmskengname))
+        print_debug('Tgt Engine  = {0}'.format(tgtmskengname))
+        print_debug('Src Envname = {0}'.format(srcenvname))
+        print_debug('Tgt Envname = {0}'.format(tgtenvname))
 
     try:
         mskai = aimasking(config, srcmskengname=srcmskengname, srcenvname=srcenvname, tgtmskengname=tgtmskengname, tgtenvname=tgtenvname, password=password)
@@ -261,16 +263,12 @@ def sync_globalobj(config, srcmskengname, tgtmskengname, password):
         globals.initialize()
         globals.debug = config.debug
         print_debug('Debug mode enabled')
-        print_debug('Parameter jobid = {0}'.format(jobid))
-        print_debug('envname = {0}'.format(envname))
     return
 
 # runjob
 @cli.command()
-@click.option('--jobname', '-n', default='', prompt='Enter Masking Job Name',
-              help='Masking Job name from Masking Engine')
-@click.option('--jobid', '-j', default='1', prompt='Enter Masking Job ID',
-              help='Masking Job ID from Masking Engine')              
+@click.option('--jobname', '-j', default='', prompt='Enter Masking Job Name',
+              help='Masking Job name from Masking Engine')         
 @click.option('--envname', '-e', default='mskenv', prompt='Enter Environment Name of Masking Job',
               help='Environment Name of Masking Job')
 @click.option('--run', '-r', default=False, is_flag=True,
@@ -280,7 +278,7 @@ def sync_globalobj(config, srcmskengname, tgtmskengname, password):
 @click.password_option('--password', '-p', default='mskenv',
                        help='Masking mskaiagnt password to connect masking engines')
 @pass_config
-def run_job(config, jobid, jobname, envname, run, mock, password):
+def run_job(config, jobname, envname, run, mock, password):
     """ This module will execute masking job on best candidate engine"""
 
     bannertext = banner()
@@ -295,7 +293,7 @@ def run_job(config, jobid, jobname, envname, run, mock, password):
         globals.initialize()
         globals.debug = config.debug
         print_debug('Debug mode enabled')
-        print_debug('Parameter jobid = {0}'.format(jobid))
+        print_debug('Parameter jobname = {0}'.format(jobname))
         print_debug('envname = {0}'.format(envname))
 
     globals.arguments['--debug'] = config.debug
@@ -320,7 +318,7 @@ def run_job(config, jobid, jobname, envname, run, mock, password):
         return
 
     try:
-        mskai = aimasking(config, jobid=jobid, jobname=jobname, envname=envname, run=run, mock=mock, password=password)
+        mskai = aimasking(config, jobname=jobname, envname=envname, run=run, mock=mock, password=password)
         mskai.run_job()
     except Exception as e:
         print("Error in MSK module")
