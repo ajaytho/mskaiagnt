@@ -39,7 +39,9 @@ def print_debug(print_obj, debug=False):
 
     try:
         if debug is True:
+            print ('DEBUG: {}'.format(str('S----------------------------------------------------------------------------------------')))
             print ('DEBUG: {}'.format(str(print_obj)))
+            print ('DEBUG: {}'.format(str('E----------------------------------------------------------------------------------------')))
             logging.debug(str(print_obj))
     except:
         pass

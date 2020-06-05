@@ -275,10 +275,12 @@ def sync_globalobj(config, srcmskengname, tgtmskengname, password):
               help='Environment Name of Masking Job')
 @click.option('--run', '-r', default=False, is_flag=True,
               help='Execute Job. In Absence display only decision')
+@click.option('--mock', '-m', default=False, is_flag=True,
+              help='Mock run - just for demos')              
 @click.password_option('--password', '-p', default='mskenv',
                        help='Masking mskaiagnt password to connect masking engines')
 @pass_config
-def run_job(config, jobid, jobname, envname, run, password):
+def run_job(config, jobid, jobname, envname, run, mock, password):
     """ This module will execute masking job on best candidate engine"""
 
     bannertext = banner()
@@ -318,7 +320,7 @@ def run_job(config, jobid, jobname, envname, run, password):
         return
 
     try:
-        mskai = aimasking(config, jobid=jobid, jobname=jobname, envname=envname, run=run, password=password)
+        mskai = aimasking(config, jobid=jobid, jobname=jobname, envname=envname, run=run, mock=mock, password=password)
         mskai.run_job()
     except Exception as e:
         print("Error in MSK module")
