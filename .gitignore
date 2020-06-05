@@ -13,3 +13,4 @@ mskai/__pycache__
 mskai/*.pyc
 *.pyc
 mskai/output
+dxtools.conf

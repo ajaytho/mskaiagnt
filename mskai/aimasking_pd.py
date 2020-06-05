@@ -7,6 +7,7 @@ from collections import Counter
 from csv import DictReader
 from sys import exit
 
+import pandas as pd
 import requests
 from termcolor import colored, cprint
 
@@ -27,10 +28,14 @@ class aimasking():
         self.enginecpulistfile = globals.enginecpulistfile
         self.config = config
 
+        self.df_enginelist = pd.DataFrame()
+        self.df_joblist = pd.DataFrame()
+        self.df_jobexeclist = pd.DataFrame()
+        self.df_joblistunq = pd.DataFrame()
+        self.df_enginecpulist = pd.DataFrame()
+
         if "jobid" in kwargs.keys():
             self.jobid = kwargs['jobid']
-        if "jobname" in kwargs.keys():
-            self.jobname = kwargs['jobname']            
         if "envname" in kwargs.keys():
             self.envname = kwargs['envname']
         if "run" in kwargs.keys():
@@ -43,16 +48,6 @@ class aimasking():
             self.totalgb = kwargs['totalgb']
         if "systemgb" in kwargs.keys():
             self.systemgb = kwargs['systemgb']
-        if "srcmskengname" in kwargs.keys():
-            self.srcmskengname = kwargs['srcmskengname']
-        if "srcenvname" in kwargs.keys():
-            self.srcenvname = kwargs['srcenvname']
-        if "srcjobname" in kwargs.keys():
-            self.srcjobname = kwargs['srcjobname']            
-        if "tgtmskengname" in kwargs.keys():
-            self.tgtmskengname = kwargs['tgtmskengname']
-        if "tgtenvname" in kwargs.keys():
-            self.tgtenvname = kwargs['tgtenvname']
 
         self.outputdir = os.path.join(self.scriptdir, 'output')
         self.outputfilename = 'output.txt'
@@ -126,25 +121,6 @@ class aimasking():
                 mergedictlist.append(res)
         return mergedictlist
 
-    def get_unqualified_qualified_engines(self, dict1):
-        qualified_engines = []
-        unqualified_engines = []
-        for item in dict1:
-            if int(item['availablemb']) > 0:
-                qualified_engines.append(item)
-            else:
-                unqualified_engines.append(item)
-        return qualified_engines, unqualified_engines
-
-    def get_max_free_mem_engine(self, dict1):
-        freemem = 0
-        winner_engine = {}
-        for item in dict1:
-            if int(item['availablemb']) > freemem:
-                winner_engine = item
-                freemem = int(item['availablemb'])
-        return winner_engine
-
     def group_job_mem_usage(self, key, sumcol, mydictname):
         try:
             aggregate_list = []
@@ -166,24 +142,6 @@ class aimasking():
             print_debug("ERROR : Unable to aggregate job usage data")
             print_debug(e)
             return None
-
-    def convert_ordered_dict_to_dict(self, ordered_dict):
-        simple_dict = {}
-        for key, value in ordered_dict.items():
-            if isinstance(value, collections.OrderedDict):
-                simple_dict[key] = convert_ordered_dict_to_dict(value)
-            else:
-                simple_dict[key] = value
-        return simple_dict
-
-    def convert_dict_to_ordereddict(self, mydict):
-        ordered_dict = {}
-        for key, value in mydict.items():
-            if isinstance(value, dict):
-                ordered_dict[key] = convert_dict_to_ordereddict(value)
-            else:
-                ordered_dict[key] = value
-        return ordered_dict
 
     def read_data_from_file(self, filename):
         rc = []
@@ -300,24 +258,6 @@ class aimasking():
         headers = {'Content-Type': 'application/json', 'Authorization': '{0}'.format(api_token)}
         api_url = '{0}{1}'.format(api_url_base, apicall)
         response = requests.post(api_url, headers=headers, json=body)
-        print(response)
-        data = json.loads(response.content.decode('utf-8'))
-        print(data)
-        print("=====")
-        if response.status_code == 200:
-            data = json.loads(response.content.decode('utf-8'))
-            return data
-        else:
-            print_debug(response.content.decode('utf-8'))
-            return None
-
-    def post_api_response1(self, ip_address, api_token, apicall, body, port=80):
-        api_url_base = 'http://{}:{}/masking/api/'.format(ip_address, port)
-        headers = {'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': '{0}'.format(api_token)}
-        api_url = '{0}{1}'.format(api_url_base, apicall)
-        response = requests.post(api_url, headers=headers, json=body)
-        print(response)
-        data = json.loads(response.content.decode('utf-8'))
         if response.status_code == 200:
             data = json.loads(response.content.decode('utf-8'))
             return data
@@ -495,14 +435,16 @@ class aimasking():
     def read_configs(self):
         # on windows
         # os.system('color')
-        self.pull_jobexeclist()
+        ####self.pull_jobexeclist()
         engine_list = self.create_dictobj(self.enginelistfile)
         job_list = self.create_dictobj(self.joblistfile)
         jobexec_list = self.create_dictobj(self.jobexeclistfile)
         enginecpu_list = self.create_dictobj(self.enginecpulistfile)
 
-        engine_list = self.create_dictobj(self.enginelistfile)
-        print_debug("engine_list:\n{}".format(engine_list))
+        self.df_enginelist = pd.read_csv(self.enginelistfile)
+        self.df_enginelist['totalgb'] = self.df_enginelist['totalgb'] * 1024
+        self.df_enginelist['systemgb'] = self.df_enginelist['systemgb'] * 1024
+        self.df_enginelist.rename(columns={'totalgb': 'totalmb', 'systemgb': 'systemmb'}, inplace=True)
 
         enginelist = []
         for engine in engine_list:
@@ -514,163 +456,144 @@ class aimasking():
         print_debug("enginelist:\n{}".format(enginelist))
         engine_list = enginelist
 
-        joblistunq = self.unqlist(job_list, 'ip_address')
-        print_debug("joblistunq:\n{}".format(joblistunq))
-        jobreqlist = self.get_jobreqlist(joblistunq, self.jobid, self.envname)
-        print_debug("jobreqlist:\n{}".format(jobreqlist))
+        if os.path.exists(self.enginecpulistfile):
+            self.df_enginecpulist = pd.read_csv(self.enginecpulistfile)
+            if self.df_enginecpulist.empty:
+                self.df_enginecpulist['cpu'] = (100 - self.df_enginecpulist['cpu'])
 
-        print_debug("engine_pool_for_job:")
-        engine_pool_for_job = self.get_jobreqlist(job_list, self.jobid, self.envname)
-        for job in engine_pool_for_job:
-            print_debug(job)
+        self.df_joblist = pd.read_csv(self.joblistfile)
+        self.df_jobexeclist = pd.read_csv(self.jobexeclistfile)
+
+        self.df_joblistunq = self.df_joblist.drop_duplicates(
+            subset=['jobid', 'jobname', 'jobmaxmemory', 'reservememory', 'environmentid', 'environmentname'],
+            keep='first')
+        job_requirement = self.df_joblistunq.query("environmentname == @self.envname and jobid == @self.jobid")
+        jobmaxmemory = job_requirement['jobmaxmemory'].values[0]
+        reservememory = job_requirement['reservememory'].values[0]
 
         bannertext = banner()
         print(" ")
         print((colored(bannertext.banner_sl_box(text="Requirements:"), 'yellow')))
         print(' Jobid     = {}'.format(self.jobid))
         print(' Env       = {}'.format(self.envname))
-        print(' MaxMB     = {} MB'.format(jobreqlist[0]['jobmaxmemory']))
-        print(' ReserveMB = {} MB'.format(jobreqlist[0]['reservememory']))
-        print(' Total     = {} MB'.format(int(jobreqlist[0]['jobmaxmemory']) + int(jobreqlist[0]['reservememory'])))
+        print(' MaxMB     = {} MB'.format(jobmaxmemory))
+        print(' ReserveMB = {} MB'.format(reservememory))
+        print(' Total     = {} MB'.format(jobmaxmemory + reservememory))
 
         if self.config.verbose or self.config.debug:
             print((colored(bannertext.banner_sl_box(text="Available Engine Pool:"), 'yellow')))
             print('{0:>1}{1:<35}{2:>20}{3:>20}'.format("", "Engine Name", "Total Memory(MB)", "System Memory(MB)"))
-            for ind in engine_list:
-                print('{0:>1}{1:<35}{2:>20}{3:>20}'.format(" ", ind['ip_address'], ind['totalmb'], ind['systemmb']))
+            for ind in self.df_enginelist.index:
+                print('{0:>1}{1:<35}{2:>20}{3:>20}'.format(" ", self.df_enginelist['ip_address'][ind],
+                                                           self.df_enginelist['totalmb'][ind],
+                                                           self.df_enginelist['systemmb'][ind]))
 
-        if self.config.verbose or self.config.debug:
-            print((colored(bannertext.banner_sl_box(text="CPU Usage:"), 'yellow')))
-            print('{0:>1}{1:<35}{2:>20}'.format("", "Engine Name", "Used CPU(%)"))
-            for ind in enginecpu_list:
-                print('{0:>1}{1:<35}{2:>20}'.format(" ", ind['ip_address'], ind['cpu']))
+        print((colored(bannertext.banner_sl_box(text="CPU Usage:"), 'yellow')))
+        print('{0:>1}{1:<35}{2:>20}'.format("", "Engine Name", "Used CPU(%)"))
+        for ind in enginecpu_list:
+            print('{0:>1}{1:<35}{2:>20}'.format(" ", ind['ip_address'], ind['cpu']))
 
-        print_debug('jobexec_list = \n{}'.format(jobexec_list))
-        engineusage = self.group_job_mem_usage('ip_address', 'jobmaxmemory', jobexec_list)
-        if engineusage is None:
-            print_debug("Creating empty list.")
-            engineusage_od = []
-            temporddict = {}
-            for ind in engine_list:
-                temporddict = collections.OrderedDict(ip_address=ind['ip_address'], totalusedmemory=0)
-                engineusage_od.append(temporddict)
-            print_debug(engineusage_od)
-        else:
-            engineusage_od = []
-            for row in engineusage:
-                engineusage_od.append(collections.OrderedDict(row))
+        engineusage = self.df_jobexeclist.query("jobstatus == 'RUNNING'").groupby('ip_address')[
+            'jobmaxmemory'].sum().reset_index(name="totalusedmemory")
+        if engineusage.empty:
+            engineusage = pd.DataFrame()
+            engineusage = self.df_enginelist[['ip_address']].copy()
+            engineusage['totalusedmemory'] = 0
 
-        print_debug('engineusage_od = \n{}'.format(engineusage_od))
-
-        if self.config.verbose or self.config.debug:
-            print((colored(bannertext.banner_sl_box(text="Memory Usage:"), 'yellow')))
-            print('{0:>1}{1:<35}{2:>20}'.format("", "Engine Name", "Used Memory(MB)"))
-            for ind in engineusage_od:
-                print('{0:>1}{1:<35}{2:>20}'.format(" ", ind['ip_address'], ind['totalusedmemory']))
+        print((colored(bannertext.banner_sl_box(text="Memory Usage:"), 'yellow')))
+        print('{0:>1}{1:<35}{2:>20}'.format("", "Engine Name", "Used Memory(MB)"))
+        for ind in engineusage.index:
+            print(
+                '{0:>1}{1:<35}{2:>20}'.format(" ", engineusage['ip_address'][ind], engineusage['totalusedmemory'][ind]))
+        # for ind in engineusage_od:
+        #	print ('{0:>1}{1:<35}{2:>20}'.format(" ",ind['ip_address'],ind['totalusedmemory'] ))
 
         if self.config.verbose or self.config.debug:
             print((colored(bannertext.banner_sl_box(text="Engine Current Usage:"), 'yellow')))
             print('{0:>1}{1:<35}{2:>20}{3:>20}'.format("", "Engine Name", "Used Memory(MB)", "Used CPU(%)"))
 
-        if len(enginecpu_list) != 0:
-            engineusage = self.join_dict(engineusage_od, enginecpu_list, 'ip_address', 'cpu')
-            if self.config.verbose or self.config.debug:
-                for ind in engineusage:
-                    print('{0:>1}{1:<35}{2:>20}{3:>20}'.format(" ", ind['ip_address'], ind['totalusedmemory'],
-                                                               ind['cpu']))
+        if self.df_enginecpulist.empty:
+            engineusage['cpu'] = 0
         else:
-            print("Handle this situation")
+            engineusage = pd.merge(engineusage, self.df_enginecpulist, on="ip_address", how="left").fillna(0)
 
-        print_debug('engineusage_od = \n{}\n'.format(engineusage_od))
-        print_debug('enginecpu_list = \n{}\n'.format(enginecpu_list))
-        print_debug('engineusage = \n{}\n'.format(engineusage))
+        if self.config.verbose or self.config.debug:
+            for ind in engineusage.index:
+                print('{0:>1}{1:<35}{2:>20}{3:>20}'.format(" ", engineusage['ip_address'][ind],
+                                                           engineusage['totalusedmemory'][ind],
+                                                           engineusage['cpu'][ind]))
 
         if self.config.verbose or self.config.debug:
             print((colored(bannertext.banner_sl_box(text="Shortlisted Engines for running Job:"), 'yellow')))
             print('{0:>1}{1:<35}{2:>20}{3:>20}'.format("", "Engine Name", "Job ID", "Env Name"))
 
+        engine_pool_for_job = self.df_joblist.query("environmentname == @self.envname and jobid == @self.jobid")
         if self.config.verbose or self.config.debug:
-            for row in engine_pool_for_job:
-                print(
-                    '{0:>1}{1:<35}{2:>20}{3:>20}'.format(" ", row['ip_address'], row['jobid'], row['environmentname']))
+            for ind in engine_pool_for_job.index:
+                print('{0:>1}{1:<35}{2:>20}{3:>20}'.format(" ", engine_pool_for_job['ip_address'][ind],
+                                                           engine_pool_for_job['jobid'][ind],
+                                                           engine_pool_for_job['environmentname'][ind]))
 
-        jpd1 = self.join_dict(engine_pool_for_job, engine_list, 'ip_address', 'dummy')
-        print_debug('jpd1 = \n{}\n'.format(jpd1))
-        print_debug('engineusage = \n{}\n'.format(engineusage))
-        jpd2 = self.join_dict(jpd1, engineusage, 'ip_address', 'totalusedmemory')
-        print_debug('jpd2 = \n{}\n'.format(jpd2))
+        # print((colored(bannertext.banner_sl_box(text="Result:"),'yellow')))
+        jpd1 = pd.merge(engine_pool_for_job, self.df_enginelist, on="ip_address", how="left")
+        jpd2 = pd.merge(jpd1, engineusage, on="ip_address", how="left").fillna(0)
+        jpd2['availablemb'] = jpd2['totalmb'] - jpd2['systemmb'] - jpd2[
+            'totalusedmemory'] - jobmaxmemory - reservememory
 
-        tempjpd = []
-        for jpd in jpd2:
-            availablemb = int(jpd['totalmb']) - int(jpd['systemmb']) - int(jpd['totalusedmemory']) - int(
-                jobreqlist[0]['jobmaxmemory']) - int(jobreqlist[0]['reservememory'])
-            jpd['availablemb'] = availablemb
-            tempjpd.append(jpd)
-
-        jpd2 = tempjpd
-        print_debug(jpd2)
-
-        qualified_engines, unqualified_engines = self.get_unqualified_qualified_engines(jpd2)
-        print_debug('qualified_engines = \n{}\n'.format(qualified_engines))
-        print_debug('unqualified_engines = \n{}\n'.format(unqualified_engines))
-
-        if len(qualified_engines) == 0:
-            redcandidate = []
-            for item in unqualified_engines:
-                item.update({"maxavailablememory": (
-                            float(item['availablemb']) + float(jobreqlist[0]['jobmaxmemory']) + float(
-                        jobreqlist[0]['reservememory']))})
-                redcandidate.append(item)
+        qualified_engines = jpd2.query("availablemb > 0")
+        unqualified_engines = jpd2.query("availablemb < 1")
+        if qualified_engines.empty:
+            redcandidate = unqualified_engines.groupby('ip_address')['availablemb'].max().reset_index(
+                name="maxavailablememory")
+            redcandidate['maxavailablememory'] = redcandidate['maxavailablememory'] + jobmaxmemory + reservememory
+            if self.df_enginecpulist.empty:
+                redcandidatewithcpu = redcandidate
+                redcandidate['cpu'] = 0
+            else:
+                redcandidatewithcpu = pd.merge(redcandidate, self.df_enginecpulist, on="ip_address", how="left").fillna(
+                    0)
 
             if self.config.verbose or self.config.debug:
                 print((colored(bannertext.banner_sl_box(text="Red Engines:"), 'yellow')))
-                print('{0:>1}{1:<35}{2:>20}{3:>20}'.format("", "Engine Name", "Available Memory(MB)", "Used CPU(%)"))
-                for ind in redcandidate:
-                    print(colored('{0:>1}{1:<35}{2:>20}{3:>20}'.format(" ", ind['ip_address'],
-                                                                       round(int(ind['maxavailablememory'])),
-                                                                       ind['cpu']), 'red'))
+                print(colored(redcandidatewithcpu, 'red'))
 
             print("  All engines are busy. Running job# {} of environment {} may cause issues.".format(self.jobid,
                                                                                                        self.envname))
             print("  Existing jobs may complete after sometime and create additional capacity to execute new job.")
             print("  Please retry later.")
         else:
-            redcandidate = []
-            for item in unqualified_engines:
-                item.update({"maxavailablememory": (
-                            float(item['availablemb']) + float(jobreqlist[0]['jobmaxmemory']) + float(
-                        jobreqlist[0]['reservememory']))})
-                redcandidate.append(item)
+            if not unqualified_engines.empty:
+                redcandidate = unqualified_engines.groupby('ip_address')['availablemb'].max().reset_index(
+                    name="maxavailablememory")
+                redcandidate['maxavailablememory'] = redcandidate['maxavailablememory'] + jobmaxmemory + reservememory
+                if self.df_enginecpulist.empty:
+                    redcandidatewithcpu = redcandidate
+                    redcandidate['cpu'] = 0
+                else:
+                    redcandidatewithcpu = pd.merge(redcandidate, self.df_enginecpulist, on="ip_address",
+                                                   how="left").fillna(0)
 
-            if self.config.verbose or self.config.debug:
-                print((colored(bannertext.banner_sl_box(text="Red Engines:"), 'yellow')))
-                print('{0:>1}{1:<35}{2:>20}{3:>20}'.format("", "Engine Name", "Available Memory(MB)", "Used CPU(%)"))
-                for ind in redcandidate:
-                    print(colored('{0:>1}{1:<35}{2:>20}{3:>20}'.format(" ", ind['ip_address'],
-                                                                       round(int(ind['maxavailablememory'])),
-                                                                       ind['cpu']), 'red'))
-
-            bestcandidatedetails = []
-            for item in qualified_engines:
-                item.update({"maxavailablememory": (
-                            float(item['availablemb']) + float(jobreqlist[0]['jobmaxmemory']) + float(
-                        jobreqlist[0]['reservememory']))})
-                bestcandidatedetails.append(item)
+                if self.config.verbose or self.config.debug:
+                    print((colored(bannertext.banner_sl_box(text="Red Engines:"), 'yellow')))
+                    print(colored(redcandidatewithcpu, 'red'))
+            bestcandidate = qualified_engines.groupby('ip_address')['availablemb'].max().reset_index(
+                name="maxavailablememory")
+            if self.df_enginecpulist.empty:
+                bestcandidatedetails = bestcandidate
+                bestcandidatedetails['cpu'] = 0
+            else:
+                bestcandidatedetails = pd.merge(bestcandidate, self.df_enginecpulist, on="ip_address",
+                                                how="left").fillna(0)
 
             if self.config.verbose or self.config.debug:
                 print((colored(bannertext.banner_sl_box(text="Green Engines:"), 'yellow')))
-                print('{0:>1}{1:<35}{2:>20}{3:>20}'.format("", "Engine Name", "Available Memory(MB)", "Used CPU(%)"))
-                for ind in bestcandidatedetails:
-                    print(colored('{0:>1}{1:<35}{2:>20}{3:>20}'.format(" ", ind['ip_address'],
-                                                                       round(int(ind['maxavailablememory'])),
-                                                                       ind['cpu']), 'green'))
-
+                print(colored(bestcandidatedetails, 'green'))
             print((colored(bannertext.banner_sl_box(text="Best Candidate:"), 'yellow')))
             print(" ")
-            winner_engine = self.get_max_free_mem_engine(bestcandidatedetails)
-            engine_name = winner_engine['ip_address']
-            engine_mem = winner_engine['maxavailablememory']
-            engine_cpu = winner_engine['cpu']
+            win_engine = bestcandidatedetails.iloc[bestcandidatedetails['maxavailablememory'].idxmax()]
+            engine_name = win_engine['ip_address']
+            engine_mem = win_engine['maxavailablememory']
+            engine_cpu = win_engine['cpu']
             print(colored(
                 " Engine : {} , Available Memory : {} MB ,  Available CPU : {}% ".format(engine_name, engine_mem,
                                                                                          engine_cpu), color='green',
@@ -698,81 +621,3 @@ class aimasking():
                     print_red_on_white(
                         " Execution of Masking job# {} on Engine {} failed".format(self.jobid, engine_name))
             print(" ")
-
-    def sync_env(self):
-        src_engine_name = self.srcmskengname
-        tgt_engine_name = self.tgtmskengname
-        src_env_name = self.srcenvname
-        tgt_env_name = self.tgtenvname
-        src_env_id = 2
-        tgt_env_id = 2
-        srcapikey = self.get_auth_key(src_engine_name)
-        if srcapikey is not None:
-            syncobjapicall = "syncable-objects?page_number=1&object_type=ENVIRONMENT"
-            syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
-            for envobj in syncobjapicallresponse['responseList']:
-                if envobj['objectIdentifier']['id'] == src_env_id:
-                    envdef = []
-                    envdef.append(envobj)                                        
-                    srcapicall = "export"
-                    srcapiresponse = self.post_api_response1(src_engine_name, srcapikey, srcapicall, envdef, port=80)
-                    
-                    tgtapikey = self.get_auth_key(tgt_engine_name)
-                    tgtapicall = "import?force_overwrite=true&environment_id={}".format(tgt_env_id)
-                    print(tgtapikey)
-                    print(tgtapicall)
-                    tgtapiresponse = self.post_api_response1(tgt_engine_name, tgtapikey, tgtapicall, srcapiresponse, port=80)                
-                    print(tgtapiresponse)
-
-        else:
-            print ("Error connecting source engine {}".format(srcmskengname))
-
-    def sync_job(self):
-        src_engine_name = self.srcmskengname
-        tgt_engine_name = self.tgtmskengname
-        src_env_name = self.srcenvname
-        tgt_env_name = self.tgtenvname
-        src_job_name = self.srcjobname
-        src_env_id = 2
-        tgt_env_id = 2
-        src_job_id = 6
-        
-        srcapikey = self.get_auth_key(src_engine_name)
-        
-        if srcapikey is not None:
-            syncobjapicall = "syncable-objects?page_number=1&object_type=MASKING_JOB"
-            syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
-            for jobobj in syncobjapicallresponse['responseList']:
-                if jobobj['objectIdentifier']['id'] == src_job_id:
-                    
-                    envdef = []
-                    envdef.append(jobobj)                                        
-                    srcapicall = "export"
-                    srcapiresponse = self.post_api_response1(src_engine_name, srcapikey, srcapicall, envdef, port=80)
-                    
-                    tgtapikey = self.get_auth_key(tgt_engine_name)
-                    tgtapicall = "import?force_overwrite=true&environment_id={}".format(tgt_env_id)
-                    print(tgtapikey)
-                    print(tgtapicall)
-                    tgtapiresponse = self.post_api_response1(tgt_engine_name, tgtapikey, tgtapicall, srcapiresponse, port=80)                
-                    print(tgtapiresponse)
-
-        else:
-            print ("Error connecting source engine {}".format(srcmskengname))
-
-    def find_job_id(self, jobname, engine_name):
-        apikey = self.get_auth_key(engine_name)
-        if apikey is not None:
-            apicall = "environments?page_number=1"
-            envlist_response = self.get_api_response(engine_name, apikey, apicall)
-            f = open(self.joblistfile, "a")
-            for envname in envlist_response['responseList']:
-                jobapicall = "masking-jobs?page_number=1&environment_id={}".format(envname['environmentId'])
-                joblist_response = self.get_api_response(engine_name, apikey, jobapicall)
-                joblist_responselist = joblist_response['responseList']
-                for joblist in joblist_responselist:
-                    f.write("{},{},{},{},{},{},{}\n".format(joblist['maskingJobId'], joblist['jobName'],
-                                                            joblist['maxMemory'], '0', envname['environmentId'],
-                                                            envname['environmentName'], engine_name))
-            f.close()
-            print("Job list for engine {} successfully generated in file {}".format(self.mskengname, self.joblistfile))

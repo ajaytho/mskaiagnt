@@ -159,24 +159,42 @@ def pull_joblist(config, mskengname, password):
 @cli.command()
 @click.option('--srcmskengname', default='', prompt='Enter Source Masking Engine name',
               help='Source Masking Engine name')
-@click.option('--srcjobid', default='', prompt='Enter Source Masking Engine job id',
-              help='Source Masking Engine Job id')
 @click.option('--srcenvname', default='', prompt='Enter Source Masking Engine env name',
               help='Source Masking Engine Environment name')
+@click.option('--srcjobname', default='', prompt='Enter Source Masking Engine job name',
+              help='Source Masking Engine Job name')              
 @click.option('--tgtmskengname', default='', prompt='Enter Target Masking Engine name',
               help='Target Masking Engine name')
-@click.option('--tgtjobid', default='', prompt='Enter Target Masking Engine job id',
-              help='Target Masking Engine Job id')
 @click.option('--tgtenvname', default='', prompt='Enter Target Masking Engine env name',
               help='Target Masking Engine Environment name')
 @click.password_option('--password', '-p',
-                       help='Masking mskaiagnt password to connect masking engines')
+              help='Masking mskaiagnt password to connect masking engines')
 @pass_config
-def sync_job(config, jobid, envname, password):
+def sync_job(config, srcmskengname, srcenvname, srcjobname, tgtmskengname, tgtenvname, password):
     """ This module will sync particular job between 2 engines"""
-    if config.verbose:
-        click.echo('Verbose mode enabled')
-        click.echo('envname = {0}'.format(envname))
+
+    bannertext = banner()
+    mybannero = bannertext.banner_sl_box_open(text="Artificial Intellegence.")
+    mybannera = bannertext.banner_sl_box_addline(text="AI Agent for Delphix Masking Server")
+    mybannerc = bannertext.banner_sl_box_close()
+    print(mybannero)
+    print(mybannera)
+    print(mybannerc)
+
+    if config.debug:
+        globals.initialize()
+        globals.debug = config.debug
+        print_debug('Debug mode enabled')
+        print_debug('Parameter jobid = {0}'.format(jobid))
+        print_debug('envname = {0}'.format(envname))
+
+    try:
+        mskai = aimasking(config, srcmskengname=srcmskengname, srcenvname=srcenvname, srcjobname=srcjobname, tgtmskengname=tgtmskengname, tgtenvname=tgtenvname, password=password)
+        mskai.sync_job()
+    except Exception as e:
+        print("Error in MSK module")
+        print(str(e))
+        return
 
 
 # syncenv
@@ -192,14 +210,34 @@ def sync_job(config, jobid, envname, password):
 @click.password_option('--password', '-p',
                        help='Masking mskaiagnt password to connect masking engines')
 @pass_config
-def sync_env(config, jobid, envname, password):
+def sync_env(config, srcmskengname, srcenvname, tgtmskengname, tgtenvname, password):
     """ This module will sync particular env between 2 engines"""
-    if config.verbose:
-        click.echo('Verbose mode enabled')
-        click.echo('envname = {0}'.format(envname))
+
+    bannertext = banner()
+    mybannero = bannertext.banner_sl_box_open(text="Artificial Intellegence.")
+    mybannera = bannertext.banner_sl_box_addline(text="AI Agent for Delphix Masking Server")
+    mybannerc = bannertext.banner_sl_box_close()
+    print(mybannero)
+    print(mybannera)
+    print(mybannerc)
+
+    if config.debug:
+        globals.initialize()
+        globals.debug = config.debug
+        print_debug('Debug mode enabled')
+        print_debug('Parameter jobid = {0}'.format(jobid))
+        print_debug('envname = {0}'.format(envname))
+
+    try:
+        mskai = aimasking(config, srcmskengname=srcmskengname, srcenvname=srcenvname, tgtmskengname=tgtmskengname, tgtenvname=tgtenvname, password=password)
+        mskai.sync_env()
+    except Exception as e:
+        print("Error in MSK module")
+        print(str(e))
+        return
 
 
-# synceng
+# syncglobalobj
 @cli.command()
 @click.option('--srcmskengname', default='', prompt='Enter Source Masking Engine name',
               help='Source Masking Engine name')
@@ -208,17 +246,31 @@ def sync_env(config, jobid, envname, password):
 @click.password_option('--password', '-p',
                        help='Masking mskaiagnt password to connect masking engines')
 @pass_config
-def sync_eng(config, jobid, envname, password):
-    """ This module will sync 2 engines"""
-    if config.verbose:
-        click.echo('Verbose mode enabled')
-        click.echo('envname = {0}'.format(envname))
+def sync_globalobj(config, srcmskengname, tgtmskengname, password):
+    """ This module will sync global objects between 2 engines"""
 
+    bannertext = banner()
+    mybannero = bannertext.banner_sl_box_open(text="Artificial Intellegence.")
+    mybannera = bannertext.banner_sl_box_addline(text="AI Agent for Delphix Masking Server")
+    mybannerc = bannertext.banner_sl_box_close()
+    print(mybannero)
+    print(mybannera)
+    print(mybannerc)
+
+    if config.debug:
+        globals.initialize()
+        globals.debug = config.debug
+        print_debug('Debug mode enabled')
+        print_debug('Parameter jobid = {0}'.format(jobid))
+        print_debug('envname = {0}'.format(envname))
+    return
 
 # runjob
 @cli.command()
+@click.option('--jobname', '-n', default='', prompt='Enter Masking Job Name',
+              help='Masking Job name from Masking Engine')
 @click.option('--jobid', '-j', default='1', prompt='Enter Masking Job ID',
-              help='Masking Job ID from Masking Engine')
+              help='Masking Job ID from Masking Engine')              
 @click.option('--envname', '-e', default='mskenv', prompt='Enter Environment Name of Masking Job',
               help='Environment Name of Masking Job')
 @click.option('--run', '-r', default=False, is_flag=True,
@@ -226,7 +278,7 @@ def sync_eng(config, jobid, envname, password):
 @click.password_option('--password', '-p', default='mskenv',
                        help='Masking mskaiagnt password to connect masking engines')
 @pass_config
-def run_job(config, jobid, envname, run, password):
+def run_job(config, jobid, jobname, envname, run, password):
     """ This module will execute masking job on best candidate engine"""
 
     bannertext = banner()
@@ -266,7 +318,7 @@ def run_job(config, jobid, envname, run, password):
         return
 
     try:
-        mskai = aimasking(config, jobid=jobid, envname=envname, run=run, password=password)
+        mskai = aimasking(config, jobid=jobid, jobname=jobname, envname=envname, run=run, password=password)
         mskai.run_job()
     except Exception as e:
         print("Error in MSK module")
