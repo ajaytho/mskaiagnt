@@ -35,6 +35,8 @@ class aimasking():
             self.envname = kwargs['envname']
         if "run" in kwargs.keys():
             self.run = kwargs['run']
+        if "username" in kwargs.keys():
+            self.username = kwargs['username']
         if "password" in kwargs.keys():
             self.password = kwargs['password']
         if "mskengname" in kwargs.keys():
@@ -53,7 +55,7 @@ class aimasking():
             self.tgtmskengname = kwargs['tgtmskengname']
         if "tgtenvname" in kwargs.keys():
             self.tgtenvname = kwargs['tgtenvname']
-
+        
         self.outputdir = os.path.join(self.scriptdir, 'output')
         self.outputfilename = 'output.txt'
         self.report_output = os.path.join(self.scriptdir, 'output', self.outputfilename)
@@ -259,7 +261,7 @@ class aimasking():
         api_url_base = 'http://{}:{}/masking/api/'.format(ip_address, port)
         headers = {'Content-Type': 'application/json'}
         api_url = '{0}login'.format(api_url_base)
-        credentials = {"username": "admin", "password": "Admin-12"}
+        credentials = {"username": self.username, "password": self.password}
         # print_debug('{},{},{},{},{},{}'.format(ip_address,port,api_url_base,headers,api_url,credentials))
         try:
             response = requests.post(api_url, headers=headers, json=credentials)

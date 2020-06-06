@@ -62,6 +62,15 @@ class OrderedGroup(click.Group):
         return self.commands
 
 
+def print_banner():
+    bannertext = banner()
+    mybannero = bannertext.banner_sl_box_open(text="Artificial Intellegence.")
+    mybannera = bannertext.banner_sl_box_addline(text="AI Agent for Delphix Masking Server")
+    mybannerc = bannertext.banner_sl_box_close()
+    print(mybannero)
+    print(mybannera)
+    print(mybannerc)
+
 # Common Options
 # @click.group()
 @click.group(cls=OrderedGroup)
@@ -95,11 +104,9 @@ def add_engine(config, mskengname, totalgb, systemgb):
     if config.verbose:
         click.echo('Verbose mode enabled')
         click.echo('mskengname = {0}'.format(mskengname))
-        click.echo('totalgb = {0}'.format(totalgb))
-        click.echo('systemgb = {0}'.format(systemgb))
-    # click.echo('mskaiagntuser = {0}'.format(mskaiagntuser))
-    # click.echo('enabled = {0}'.format(enabled))
-    # mskai = aimasking(config, mskengname=mskengname, mskaiagntuser=mskaiagntuser, totalgb=totalgb, systemgb=systemgb, enabled=enabled)
+        click.echo('totalgb    = {0}'.format(totalgb))
+        click.echo('systemgb   = {0}'.format(systemgb))
+    print_banner()
     mskai = aimasking(config, mskengname=mskengname, totalgb=totalgb, systemgb=systemgb)
     mskai.add_engine()
 
@@ -134,24 +141,20 @@ def del_engine(config, mskengname):
 @cli.command()
 @click.option('--mskengname', '-m', default='all', prompt='Enter Masking Engine name',
               help='Masking Engine name')
+@click.option('--username', '-u', prompt='Enter Masking username',
+                       help='Masking mskaiagnt username to connect masking engines')
 @click.password_option('--password', '-p',
                        help='Masking mskaiagnt password to connect masking engines')
 @pass_config
-def pull_joblist(config, mskengname, password):
+def pull_joblist(config, mskengname, username, password):
     """ This module will pull joblist from engine"""
     if config.verbose:
         click.echo('Verbose mode enabled')
         click.echo('mskengname = {0}'.format(mskengname))
+        click.echo('username   = {0}'.format(username))
 
-    bannertext = banner()
-    mybannero = bannertext.banner_sl_box_open(text="Artificial Intellegence.")
-    mybannera = bannertext.banner_sl_box_addline(text="AI Agent for Delphix Masking Server")
-    mybannerc = bannertext.banner_sl_box_close()
-    print(mybannero)
-    print(mybannera)
-    print(mybannerc)
-
-    mskai = aimasking(config, mskengname=mskengname, password=password)
+    print_banner()
+    mskai = aimasking(config, mskengname=mskengname, username=username, password=password)
     mskai.pull_joblist()
 
 
@@ -167,29 +170,29 @@ def pull_joblist(config, mskengname, password):
               help='Target Masking Engine name')
 @click.option('--tgtenvname', default='', prompt='Enter Target Masking Engine env name',
               help='Target Masking Engine Environment name')
+@click.option('--username', '-u', prompt='Enter Masking username',
+                       help='Masking mskaiagnt username to connect masking engines')
 @click.password_option('--password', '-p',
-              help='Masking mskaiagnt password to connect masking engines')
+                       help='Masking mskaiagnt password to connect masking engines')
 @pass_config
-def sync_job(config, srcmskengname, srcenvname, srcjobname, tgtmskengname, tgtenvname, password):
+def sync_job(config, srcmskengname, srcenvname, srcjobname, tgtmskengname, tgtenvname, username, password):
     """ This module will sync particular job between 2 engines"""
 
-    bannertext = banner()
-    mybannero = bannertext.banner_sl_box_open(text="Artificial Intellegence.")
-    mybannera = bannertext.banner_sl_box_addline(text="AI Agent for Delphix Masking Server")
-    mybannerc = bannertext.banner_sl_box_close()
-    print(mybannero)
-    print(mybannera)
-    print(mybannerc)
-
+    print_banner()
     if config.debug:
         globals.initialize()
         globals.debug = config.debug
-        print_debug('Debug mode enabled')
-        print_debug('Parameter jobname = {0}'.format(srcjobname))
-        print_debug('envname = {0}'.format(envname))
+
+    if config.verbose:
+        print_debug('Verbose mode enabled')
+        print_debug('srcmskengname = {0}'.format(srcmskengname))
+        print_debug('srcenvname    = {0}'.format(srcenvname))
+        print_debug('srcjobname    = {0}'.format(srcjobname))
+        print_debug('tgtmskengname = {0}'.format(tgtmskengname))
+        print_debug('username      = {0}'.format(username))
 
     try:
-        mskai = aimasking(config, srcmskengname=srcmskengname, srcenvname=srcenvname, srcjobname=srcjobname, tgtmskengname=tgtmskengname, tgtenvname=tgtenvname, password=password)
+        mskai = aimasking(config, srcmskengname=srcmskengname, srcenvname=srcenvname, srcjobname=srcjobname, tgtmskengname=tgtmskengname, tgtenvname=tgtenvname, username=username, password=password)
         mskai.sync_job()
     except Exception as e:
         print("Error in MSK module")
@@ -207,31 +210,29 @@ def sync_job(config, srcmskengname, srcenvname, srcjobname, tgtmskengname, tgten
               help='Target Masking Engine name')
 @click.option('--tgtenvname', default='', prompt='Enter Target Masking Engine env name',
               help='Target Masking Engine Environment name')
+@click.option('--username', '-u', prompt='Enter Masking username',
+                       help='Masking mskaiagnt username to connect masking engines')
 @click.password_option('--password', '-p',
                        help='Masking mskaiagnt password to connect masking engines')
 @pass_config
-def sync_env(config, srcmskengname, srcenvname, tgtmskengname, tgtenvname, password):
+def sync_env(config, srcmskengname, srcenvname, tgtmskengname, tgtenvname, username, password):
     """ This module will sync particular env between 2 engines"""
 
-    bannertext = banner()
-    mybannero = bannertext.banner_sl_box_open(text="Artificial Intellegence.")
-    mybannera = bannertext.banner_sl_box_addline(text="AI Agent for Delphix Masking Server")
-    mybannerc = bannertext.banner_sl_box_close()
-    print(mybannero)
-    print(mybannera)
-    print(mybannerc)
-
+    print_banner()
     if config.debug:
         globals.initialize()
         globals.debug = config.debug
-        print_debug('Debug mode enabled')
-        print_debug('Src Engine  = {0}'.format(srcmskengname))
-        print_debug('Tgt Engine  = {0}'.format(tgtmskengname))
-        print_debug('Src Envname = {0}'.format(srcenvname))
-        print_debug('Tgt Envname = {0}'.format(tgtenvname))
+
+    if config.verbose:
+        print_debug('Verbose mode enabled')
+        print_debug('srcmskengname = {0}'.format(srcmskengname))
+        print_debug('srcenvname    = {0}'.format(srcenvname))
+        print_debug('srcjobname    = {0}'.format(srcjobname))
+        print_debug('tgtmskengname = {0}'.format(tgtmskengname))
+        print_debug('username      = {0}'.format(username))
 
     try:
-        mskai = aimasking(config, srcmskengname=srcmskengname, srcenvname=srcenvname, tgtmskengname=tgtmskengname, tgtenvname=tgtenvname, password=password)
+        mskai = aimasking(config, srcmskengname=srcmskengname, srcenvname=srcenvname, tgtmskengname=tgtmskengname, tgtenvname=tgtenvname, username=username, password=password)
         mskai.sync_env()
     except Exception as e:
         print("Error in MSK module")
@@ -245,25 +246,24 @@ def sync_env(config, srcmskengname, srcenvname, tgtmskengname, tgtenvname, passw
               help='Source Masking Engine name')
 @click.option('--tgtmskengname', default='', prompt='Enter Target Masking Engine name',
               help='Target Masking Engine name')
+@click.option('--username', '-u', prompt='Enter Masking username',
+                       help='Masking mskaiagnt username to connect masking engines')  
 @click.password_option('--password', '-p',
                        help='Masking mskaiagnt password to connect masking engines')
 @pass_config
 def sync_globalobj(config, srcmskengname, tgtmskengname, password):
     """ This module will sync global objects between 2 engines"""
 
-    bannertext = banner()
-    mybannero = bannertext.banner_sl_box_open(text="Artificial Intellegence.")
-    mybannera = bannertext.banner_sl_box_addline(text="AI Agent for Delphix Masking Server")
-    mybannerc = bannertext.banner_sl_box_close()
-    print(mybannero)
-    print(mybannera)
-    print(mybannerc)
-
+    print_banner()
     if config.debug:
         globals.initialize()
         globals.debug = config.debug
-        print_debug('Debug mode enabled')
-    return
+
+    if config.verbose:
+        print_debug('Verbose mode enabled')
+        print_debug('srcmskengname = {0}'.format(srcmskengname))
+        print_debug('tgtmskengname = {0}'.format(tgtmskengname))
+        print_debug('username      = {0}'.format(username))
 
 # runjob
 @cli.command()
@@ -274,27 +274,27 @@ def sync_globalobj(config, srcmskengname, tgtmskengname, password):
 @click.option('--run', '-r', default=False, is_flag=True,
               help='Execute Job. In Absence display only decision')
 @click.option('--mock', '-m', default=False, is_flag=True,
-              help='Mock run - just for demos')              
+              help='Mock run - just for demos')
+@click.option('--username', '-u', prompt='Enter Masking username',
+                       help='Masking mskaiagnt username to connect masking engines')              
 @click.password_option('--password', '-p', default='mskenv',
                        help='Masking mskaiagnt password to connect masking engines')
 @pass_config
-def run_job(config, jobname, envname, run, mock, password):
+def run_job(config, jobname, envname, run, mock, username, password):
     """ This module will execute masking job on best candidate engine"""
 
-    bannertext = banner()
-    mybannero = bannertext.banner_sl_box_open(text="Artificial Intellegence.")
-    mybannera = bannertext.banner_sl_box_addline(text="AI Agent for Delphix Masking Server")
-    mybannerc = bannertext.banner_sl_box_close()
-    print(mybannero)
-    print(mybannera)
-    print(mybannerc)
-
+    print_banner()
     if config.debug:
         globals.initialize()
         globals.debug = config.debug
-        print_debug('Debug mode enabled')
-        print_debug('Parameter jobname = {0}'.format(jobname))
-        print_debug('envname = {0}'.format(envname))
+
+    if config.verbose:
+        print_debug('Verbose mode enabled')
+        print_debug('jobname  = {0}'.format(jobname))
+        print_debug('envname  = {0}'.format(envname))
+        print_debug('run      = {0}'.format(run))
+        print_debug('mock     = {0}'.format(mock))
+        print_debug('username = {0}'.format(username))
 
     globals.arguments['--debug'] = config.debug
     globals.arguments['--config'] = './dxtools.conf'
@@ -318,7 +318,7 @@ def run_job(config, jobname, envname, run, mock, password):
         return
 
     try:
-        mskai = aimasking(config, jobname=jobname, envname=envname, run=run, mock=mock, password=password)
+        mskai = aimasking(config, jobname=jobname, envname=envname, run=run, mock=mock, username=username, password=password)
         mskai.run_job()
     except Exception as e:
         print("Error in MSK module")
