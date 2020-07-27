@@ -19,12 +19,12 @@ def init_session():
 def write_records():
 	f = open('/home/ubuntu/WSL/mskaiagnt/output/enginelist.csv', "w")
 	f.write("{},{},{}\n".format("mskengine01","64","10"))
-	f.write("{},{},{}\n".format("mskengine02","64","10"))
-	f.write("{},{},{}\n".format("mskengine03","64","10"))
-	f.write("{},{},{}\n".format("mskengine04","64","10"))
-	f.write("{},{},{}\n".format("mskengine05","64","10"))
 	f.write("{},{},{}\n".format("ajaydlpx6pri.dcenter.delphix.com","64","10"))
 	f.write("{},{},{}\n".format("ajaydlpx53pri.dcenter.delphix.com","64","10"))
+	f.write("{},{},{}\n".format("ajayedsidlpx.dcenter.delphix.com","64","10"))
+	f.write("{},{},{}\n".format("ajayedsidlpx.dlpxdc.co","64","10"))
+	f.write("{},{},{}\n".format("rp6021m.dlpxdc.co","64","10"))
+	f.write("{},{},{}\n".format("rp6030m.dlpxdc.co","64","10"))
 	f.close()
 	return
 
@@ -32,13 +32,12 @@ def write_dxtools_header_record():
 	f = open(dxtools_csvfile, "w")
 	f.write("{},{},{},{},{},{},{}\n".format('protocol','ip_address','password','port','username','default','hostname'))
 	f.write("{},{},{},{},{},{},{}\n".format('http','mskengine01','delphix','80','admin','true','mskengine01'))
-	f.write("{},{},{},{},{},{},{}\n".format('http','mskengine02','delphix','80','admin','true','mskengine02'))
-	f.write("{},{},{},{},{},{},{}\n".format('http','mskengine03','delphix','80','admin','true','mskengine03'))
-	f.write("{},{},{},{},{},{},{}\n".format('http','mskengine04','delphix','80','admin','true','mskengine04'))
-	f.write("{},{},{},{},{},{},{}\n".format('http','mskengine05','delphix','80','admin','true','mskengine05'))
-	f.write("{},{},{},{},{},{},{}\n".format('http','mskengine05','delphix','80','admin','true','mskengine05'))
 	f.write("{},{},{},{},{},{},{}\n".format('http','ajaydlpx6pri.dcenter.delphix.com','delphix','80','admin','true','ajaydlpx6pri.dcenter.delphix.com'))
 	f.write("{},{},{},{},{},{},{}\n".format('http','ajaydlpx53pri.dcenter.delphix.com','delphix','80','admin','true','ajaydlpx53pri.dcenter.delphix.com'))
+	f.write("{},{},{},{},{},{},{}\n".format('http','ajayedsidlpx.dcenter.delphix.com','delphix','80','admin','true','ajayedsidlpx.dcenter.delphix.com'))
+	f.write("{},{},{},{},{},{},{}\n".format('http','ajayedsidlpx.dlpxdc.co','delphix','80','admin','true','ajayedsidlpx.dlpxdc.co'))
+	f.write("{},{},{},{},{},{},{}\n".format('http','rp6021m.dlpxdc.co','delphix','80','admin','true','rp6021m.dlpxdc.co'))
+	f.write("{},{},{},{},{},{},{}\n".format('http','rp6030m.dlpxdc.co','delphix','80','admin','true','rp6030m.dlpxdc.co'))
 	f.close()
 	return
 

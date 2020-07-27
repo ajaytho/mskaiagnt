@@ -1,0 +1,44 @@
+# help
+./mskaiagnt --help
+
+# List engines
+./mskaiagnt list-engine
+
+# Add real dcenter engines
+./mskaiagnt add-engine -m atmskengine01 -t 64 -s 10
+./mskaiagnt add-engine -m atmskengine02 -t 64 -s 10
+./mskaiagnt add-engine -m atmskengine03 -t 64 -s 10
+./mskaiagnt add-engine -m ajaydlpx6pri -t 64 -s 10
+./mskaiagnt add-engine -m rp6021m.dlpxdc.co -t 64 -s 10
+./mskaiagnt add-engine -m rp6030m.dlpxdc.co -t 64 -s 10
+
+# List engines
+./mskaiagnt list-engine
+
+# Generate dxtools.conf file
+./mskaiagnt gen-dxtools-conf --protocol http
+
+# Validate VE
+../dxtoolkit2/dx_get_appliance -all -configfile ./dxtools.conf
+
+# Pull job list
+./mskaiagnt pull-joblist -m all --username admin --password Admin-12
+
+# Run job - simulataion
+./mskaiagnt run-job -j maskjob6 -e mskdevenv --username admin --password Admin-12
+./mskaiagnt -v run-job -j maskjob6 -e mskdevenv --username admin --password Admin-12
+
+# Real run
+./mskaiagnt -v run-job -j maskjob6 -e mskdevenv --username admin --password Admin-12 -r
+
+# Sync Eng
+./mskaiagnt sync-eng --srcmskengname atmskengine01 --tgtmskengname atmskengine02 -g --username admin --password Admin-12
+
+# Sync Env
+./mskaiagnt sync-env --srcmskengname atmskengine01 --srcenvname DB2LUW --tgtmskengname atmskengine01 --tgtenvname DB2LUW --username admin --password Admin-12
+
+# Sync Job
+./mskaiagnt sync-job --srcmskengname atmskengine01 --srcenvname mskdevenv --tgtmskengname atmskengine01 --tgtenvname mskdevenv --srcjobname maskjob6 --username admin --password Admin-12
+
+# Cleanup Engine
+./mskaiagnt cleanup-eng --mskengname atmskengine02 --username admin --password Admin-12
