@@ -23,3 +23,4 @@ test_connector.sh
 update_demo_engines.py
 update_demo_jobexeclist.py
 update_dxtools_conf.py
+extra
