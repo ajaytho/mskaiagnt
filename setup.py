@@ -8,7 +8,8 @@ setup(
         'Click',
 		'termcolor',
 		'requests',
-        'psutil'
+        'psutil',
+        'statistics'
     ],
     entry_points='''
         [console_scripts]
