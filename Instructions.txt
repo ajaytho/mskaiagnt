@@ -22,7 +22,7 @@
 ../dxtoolkit2/dx_get_appliance -all -configfile ./dxtools.conf
 
 # Pull job list
-./mskaiagnt pull-joblist -m all --username admin --password Admin-12
+./mskaiagnt pull-joblist -m all --username admin --password Admin-12 --protocol http
 
 # Run job - simulataion
 ./mskaiagnt run-job -j maskjob6 -e mskdevenv --username admin --password Admin-12

@@ -158,7 +158,7 @@ def del_engine(config, mskengname):
                        help='Masking mskaiagnt username to connect masking engines')
 @click.password_option('--password', '-p',
                        help='Masking mskaiagnt password to connect masking engines')
-@click.option('--protocol', '-p', default='http', prompt='Enter protocol http|https to access Masking Engines',
+@click.option('--protocol', default='http', prompt='Enter protocol http|https to access Masking Engines',
               help='http protocol')                       
 @pass_config
 def pull_joblist(config, mskengname, username, password, protocol):
@@ -172,14 +172,14 @@ def pull_joblist(config, mskengname, username, password, protocol):
     if config.debug:
         globals.initialize()
         globals.debug = config.debug
-        
+
     print_banner()
     mskai = aimasking(config, mskengname=mskengname, username=username, password=password, protocol=protocol)
     mskai.pull_joblist()
 
 # gen-dxtoolsconf
 @cli.command()
-@click.option('--protocol', '-p', default='http', prompt='Enter protocol http|https to access Masking Engines',
+@click.option('--protocol', default='http', prompt='Enter protocol http|https to access Masking Engines',
               help='http protocol')
 @pass_config
 def gen_dxtools_conf(config, protocol):
@@ -209,7 +209,7 @@ def gen_dxtools_conf(config, protocol):
                        help='Masking mskaiagnt username to connect masking engines')
 @click.password_option('--password', '-p',
                        help='Masking mskaiagnt password to connect masking engines')
-@click.option('--protocol', '-p', default='http', prompt='Enter protocol http|https to access Masking Engines',
+@click.option('--protocol', default='http', prompt='Enter protocol http|https to access Masking Engines',
               help='http protocol')
 
 @pass_config
@@ -256,7 +256,7 @@ def sync_job(config, srcmskengname, srcenvname, srcjobname, tgtmskengname, tgten
                        help='Masking mskaiagnt username to connect masking engines')
 @click.password_option('--password', '-p',
                        help='Masking mskaiagnt password to connect masking engines')
-@click.option('--protocol', '-p', default='http', prompt='Enter protocol http|https to access Masking Engines',
+@click.option('--protocol', default='http', prompt='Enter protocol http|https to access Masking Engines',
               help='http protocol')                       
 @pass_config
 def sync_env(config, srcmskengname, srcenvname, tgtmskengname, tgtenvname, globalobjsync, username, password, protocol):
@@ -297,7 +297,7 @@ def sync_env(config, srcmskengname, srcenvname, tgtmskengname, tgtenvname, globa
                        help='Masking mskaiagnt username to connect masking engines')
 @click.password_option('--password', '-p',
                        help='Masking mskaiagnt password to connect masking engines')
-@click.option('--protocol', '-p', default='http', prompt='Enter protocol http|https to access Masking Engines',
+@click.option('--protocol', default='http', prompt='Enter protocol http|https to access Masking Engines',
               help='http protocol')                       
 @pass_config
 def sync_eng(config, srcmskengname, tgtmskengname, globalobjsync, username, password, protocol):
@@ -336,7 +336,7 @@ def sync_eng(config, srcmskengname, tgtmskengname, globalobjsync, username, pass
                        help='Masking mskaiagnt username to connect masking engines')
 @click.password_option('--password', '-p',
                        help='Masking mskaiagnt password to connect masking engines')
-@click.option('--protocol', '-p', default='http', prompt='Enter protocol http|https to access Masking Engines',
+@click.option('--protocol', default='http', prompt='Enter protocol http|https to access Masking Engines',
               help='http protocol')                       
 @pass_config
 def sync_globalobj(config, srcmskengname, srcenvname, tgtmskengname, tgtenvname, globalobjsync, username, password, protocol):
@@ -371,7 +371,7 @@ def sync_globalobj(config, srcmskengname, srcenvname, tgtmskengname, tgtenvname,
                        help='Masking mskaiagnt username to connect masking engines')
 @click.password_option('--password', '-p',
                        help='Masking mskaiagnt password to connect masking engines')
-@click.option('--protocol', '-p', default='http', prompt='Enter protocol http|https to access Masking Engines',
+@click.option('--protocol', default='http', prompt='Enter protocol http|https to access Masking Engines',
               help='http protocol')                       
 @pass_config
 def cleanup_eng(config, mskengname, username, password, protocol):
@@ -410,7 +410,7 @@ def cleanup_eng(config, mskengname, username, password, protocol):
                        help='Masking mskaiagnt username to connect masking engines')              
 @click.password_option('--password', '-p', default='mskenv',
                        help='Masking mskaiagnt password to connect masking engines')
-@click.option('--protocol', '-p', default='http', prompt='Enter protocol http|https to access Masking Engines',
+@click.option('--protocol', default='http', prompt='Enter protocol http|https to access Masking Engines',
               help='http protocol')                       
 @pass_config
 def run_job(config, jobname, envname, run, mock, username, password, protocol):
@@ -478,7 +478,7 @@ def run_job(config, jobname, envname, run, mock, username, password, protocol):
                        help='Masking mskaiagnt username to connect masking engines')              
 @click.password_option('--password', '-p', default='mskenv',
                        help='Masking mskaiagnt password to connect masking engines')
-@click.option('--protocol', '-p', default='http', prompt='Enter protocol http|https to access Masking Engines',
+@click.option('--protocol', default='http', prompt='Enter protocol http|https to access Masking Engines',
               help='http protocol')                       
 @pass_config
 def list_green_eng(config, username, password, protocol):
