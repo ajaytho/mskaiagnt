@@ -14,6 +14,10 @@ import mskai.globals as globals
 from mskai.DxLogging import print_debug
 from mskai.banner import banner
 
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
 class dotdict(dict):
     """dot.notation access to dictionary attributes"""
     __getattr__ = dict.get
@@ -75,6 +79,8 @@ class aimasking():
             self.globalobjsync = kwargs['globalobjsync']
         if "protocol" in kwargs.keys():
             self.protocol = kwargs['protocol']
+        else:
+            self.protocol = "http"
         self.outputdir = os.path.join(self.scriptdir, 'output')
         self.outputfilename = 'output.txt'
         self.report_output = os.path.join(self.scriptdir, 'output', self.outputfilename)
@@ -96,17 +102,21 @@ class aimasking():
         return [dict(data) for data in
                 sorted(set(tuple((key, value) for key, value in row.items() if key != ignore_field) for row in mydict))]
 
-    def gen_dxtools_csv_file(self,protocol="http"):
+    def gen_dxtools_csv_file(self, protocol="http"):
+        if protocol == "https":
+            port = 443
+        else:
+            port = 80
         f = open(globals.dxtools_file_csv, "w")
         f.write("{},{},{},{},{},{},{}\n".format('protocol','ip_address','password','port','username','default','hostname'))
         engine_list = self.create_dictobj(self.enginelistfile)
         for engine in engine_list:
-            f.write("{},{},{},{},{},{},{}\n".format(protocol,engine['ip_address'],'delphix','80','admin','true',engine['ip_address']))
+            f.write("{},{},{},{},{},{},{}\n".format(protocol,engine['ip_address'],'delphix',port,'admin','true',engine['ip_address']))
         f.close()
         return
 
     def gen_dxtools_conf(self):
-        protocol = self.protocol
+        protocol = self.protocol        
         # Write csv conf file
         self.gen_dxtools_csv_file(protocol)
         # Generate json conf file
@@ -124,6 +134,7 @@ class aimasking():
         with open(globals.dxtools_file, 'w') as outfile:
             json.dump(outputdict, outfile, sort_keys = True, indent = 4, ensure_ascii = False)
         outfile.close()
+        print("{} file generated successfully".format(globals.dxtools_file))
 
     def get_jobreqlist(self, mydictname, myjobname, myenvname):
         filtereddatafinal1 = filter(lambda row: (myjobname == row['jobname'] and myenvname == row['environmentname']),mydictname)
@@ -308,14 +319,17 @@ class aimasking():
             print_debug("Error deleting engine {} from file {}".format(self.mskengname, self.enginelistfile))
 
     def get_auth_key(self, ip_address, port=80):
-
-        api_url_base = 'http://{}:{}/masking/api/'.format(ip_address, port)
+        protocol = self.protocol        
+        if protocol == "https":
+            port = 443
+        api_url_base = '{}://{}:{}/masking/api/'.format(protocol, ip_address, port)
         headers = {'Content-Type': 'application/json'}
         api_url = '{0}login'.format(api_url_base)
+        print_debug("api_url = {}".format(api_url))
         credentials = {"username": self.username, "password": self.password}
         # print_debug('{},{},{},{},{},{}'.format(ip_address,port,api_url_base,headers,api_url,credentials))
         try:
-            response = requests.post(api_url, headers=headers, json=credentials)
+            response = requests.post(api_url, headers=headers, json=credentials, verify=False)
             if response.status_code == 200:
                 data = json.loads(response.content.decode('utf-8'))
                 # print_debug (data['Authorization'])
@@ -328,10 +342,13 @@ class aimasking():
             return None
 
     def get_api_response(self, ip_address, api_token, apicall, port=80):
-        api_url_base = 'http://{}:{}/masking/api/'.format(ip_address, port)
+        protocol = self.protocol
+        if protocol == "https":
+            port = 443
+        api_url_base = '{}://{}:{}/masking/api/'.format(protocol,ip_address, port)
         headers = {'Content-Type': 'application/json', 'Authorization': '{0}'.format(api_token)}
         api_url = '{0}{1}'.format(api_url_base, apicall)
-        response = requests.get(api_url, headers=headers)
+        response = requests.get(api_url, headers=headers, verify=False)
         if response.status_code == 200:
             data = json.loads(response.content.decode('utf-8'))
             return data
@@ -340,10 +357,13 @@ class aimasking():
             return None
 
     def del_api_response(self, ip_address, api_token, apicall, port=80):
-        api_url_base = 'http://{}:{}/masking/api/'.format(ip_address, port)
+        protocol = self.protocol
+        if protocol == "https":
+            port = 443
+        api_url_base = '{}://{}:{}/masking/api/'.format(protocol,ip_address, port)
         headers = {'Content-Type': 'application/json', 'Authorization': '{0}'.format(api_token)}
         api_url = '{0}{1}'.format(api_url_base, apicall)
-        response = requests.delete(api_url, headers=headers)
+        response = requests.delete(api_url, headers=headers, verify=False)
         if response.status_code == 200:
             data = response.content.decode('utf-8')
             return data
@@ -352,10 +372,13 @@ class aimasking():
             return None
 
     def post_api_response(self, ip_address, api_token, apicall, body, port=80):
-        api_url_base = 'http://{}:{}/masking/api/'.format(ip_address, port)
+        protocol = self.protocol
+        if protocol == "https":
+            port = 443
+        api_url_base = '{}://{}:{}/masking/api/'.format(protocol,ip_address, port)
         headers = {'Content-Type': 'application/json', 'Authorization': '{0}'.format(api_token)}
         api_url = '{0}{1}'.format(api_url_base, apicall)
-        response = requests.post(api_url, headers=headers, json=body)
+        response = requests.post(api_url, headers=headers, json=body, verify=False)
         #print(response)
         #data = json.loads(response.content.decode('utf-8'))
         #print(data)
@@ -368,10 +391,13 @@ class aimasking():
             return None
 
     def post_api_response1(self, ip_address, api_token, apicall, body, port=80):
-        api_url_base = 'http://{}:{}/masking/api/'.format(ip_address, port)
+        protocol = self.protocol
+        if protocol == "https":
+            port = 443
+        api_url_base = '{}://{}:{}/masking/api/'.format(protocol,ip_address, port)
         headers = {'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': '{0}'.format(api_token)}
         api_url = '{0}{1}'.format(api_url_base, apicall)
-        response = requests.post(api_url, headers=headers, json=body)
+        response = requests.post(api_url, headers=headers, json=body, verify=False)
         #print(response)
         #data = json.loads(response.content.decode('utf-8'))
         if response.status_code == 200:
@@ -687,6 +713,7 @@ class aimasking():
             for engine in engine_list:
                 engine_name = engine['ip_address']
                 apikey = self.get_auth_key(engine_name)
+                #print("apikey:{}".format(apikey))
                 if apikey is not None:
                     apicall = "environments?page_number=1"
                     envlist_response = self.get_api_response(engine_name, apikey, apicall)
