@@ -29,6 +29,7 @@
 #   -e      Environment Name of Masking job
 #   -j      Masking Job Id
 # ================================================================================
+VERSION = "1.0.1"
 
 import collections
 import os
@@ -81,6 +82,7 @@ def print_banner():
 # Common Options
 # @click.group()
 @click.group(cls=OrderedGroup)
+
 @click.option('--verbose', '-v', is_flag=True)
 @click.option('--debug', '-d', is_flag=True)
 @pass_config
@@ -89,7 +91,18 @@ def cli(config, verbose, debug):
         config.verbose = verbose
     if debug:
         config.debug = debug
+    click.echo(VERSION)
 
+# gen-dxtoolsconf
+@cli.command()
+@pass_config
+def version(config):
+    """ Script Version"""
+    if config.verbose:
+        click.echo('Verbose mode enabled')
+
+    print_banner()
+    click.echo('Script Version : {}'.format(VERSION))
 
 # add_engine
 @cli.command()
