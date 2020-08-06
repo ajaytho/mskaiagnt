@@ -27,3 +27,4 @@ extra
 lib64
 pyvenv.cfg
 *.tmp
+*.unsaved
