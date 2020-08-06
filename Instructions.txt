@@ -9,8 +9,8 @@
 ./mskaiagnt add-engine -m atmskengine02 -t 64 -s 10
 ./mskaiagnt add-engine -m atmskengine03 -t 64 -s 10
 ./mskaiagnt add-engine -m ajaydlpx6pri -t 64 -s 10
-./mskaiagnt add-engine -m rp6021m.dlpxdc.co -t 64 -s 10
-./mskaiagnt add-engine -m rp6030m.dlpxdc.co -t 64 -s 10
+./mskaiagnt add-engine -m rp6021m -t 64 -s 10
+./mskaiagnt add-engine -m rp6030m -t 64 -s 10
 
 # List engines
 ./mskaiagnt list-engine
@@ -22,23 +22,23 @@
 ../dxtoolkit2/dx_get_appliance -all -configfile ./dxtools.conf
 
 # Pull job list
-./mskaiagnt pull-joblist -m all --username admin --password Admin-12 --protocol http
+./mskaiagnt pull-joblist -m all --username admin --password xxxxxx --protocol http
 
 # Run job - simulataion
-./mskaiagnt run-job -j maskjob6 -e mskdevenv --username admin --password Admin-12
-./mskaiagnt -v run-job -j maskjob6 -e mskdevenv --username admin --password Admin-12
+./mskaiagnt run-job -j maskjob6 -e mskdevenv --username admin --password xxxxxx
+./mskaiagnt -v run-job -j maskjob6 -e mskdevenv --username admin --password xxxxxx
 
 # Real run
-./mskaiagnt -v run-job -j maskjob6 -e mskdevenv --username admin --password Admin-12 -r
+./mskaiagnt -v run-job -j maskjob6 -e mskdevenv --username admin --password xxxxxx -r
 
 # Sync Eng
-./mskaiagnt sync-eng --srcmskengname atmskengine01 --tgtmskengname atmskengine02 -g --username admin --password Admin-12
+./mskaiagnt sync-eng --srcmskengname atmskengine01 --tgtmskengname atmskengine02 -g --username admin --password xxxxxx
 
 # Sync Env
-./mskaiagnt sync-env --srcmskengname atmskengine01 --srcenvname DB2LUW --tgtmskengname atmskengine01 --tgtenvname DB2LUW --username admin --password Admin-12
+./mskaiagnt sync-env --srcmskengname atmskengine01 --srcenvname DB2LUW --tgtmskengname atmskengine01 --tgtenvname DB2LUW --username admin --password xxxxxx
 
 # Sync Job
-./mskaiagnt sync-job --srcmskengname atmskengine01 --srcenvname mskdevenv --tgtmskengname atmskengine01 --tgtenvname mskdevenv --srcjobname maskjob6 --username admin --password Admin-12
+./mskaiagnt sync-job --srcmskengname atmskengine01 --srcenvname mskdevenv --tgtmskengname atmskengine01 --tgtenvname mskdevenv --srcjobname maskjob6 --username admin --password xxxxxx
 
 # Cleanup Engine
-./mskaiagnt cleanup-eng --mskengname atmskengine02 --username admin --password Admin-12
+./mskaiagnt cleanup-eng --mskengname atmskengine02 --username admin --password xxxxxx
