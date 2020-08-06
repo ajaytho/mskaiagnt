@@ -77,3 +77,15 @@ Masking AI Agent is built using python 3.x. It helps to
 ./mskaiagnt cleanup-eng --mskengname atmskengine02 --username admin --password xxxxxx
 ```
 
+### <a id="contribute"></a>How to Contribute
+
+Please read [CONTRIBUTING.md](./CONTRIBUTING.md) to understand the pull requests process.
+
+### <a id="statement-of-support"></a>Statement of Support
+
+This software is provided as-is, without warranty of any kind or commercial support through Delphix. See the associated license for additional details. Questions, issues, feature requests, and contributions should be directed to the community as outlined in the [Delphix Community Guidelines](https://delphix.github.io/community-guidelines.html).
+
+### <a id="license"></a>License
+
+This is code is licensed under the Apache License 2.0. Full license is available [here](./LICENSE).
+
