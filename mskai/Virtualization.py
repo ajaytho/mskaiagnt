@@ -22,6 +22,8 @@ class virtualization():
             self.config_file_path = kwargs['config_file_path']
         if "outputdir" in kwargs.keys():
             self.outputdir = kwargs['outputdir']
+        if "protocol" in kwargs.keys():
+            self.protocol = kwargs['protocol']
 
         self.headers = {'Content-Type': 'application/json'}
 
@@ -33,8 +35,11 @@ class virtualization():
                 print_debug("Created directory {}".format(self.outputdir))
 
     def create_api_session(self, ip_address, port=80):
+        protocol = self.protocol
+        if protocol == "https":
+            port = 443        
         apiversion = {'type': 'APISession', 'version': {'type': 'APIVersion', "major": 1, "minor": 9, "micro": 3}}
-        api_url_base = 'http://{}:{}/resources/json/delphix/'.format(ip_address, port)
+        api_url_base = '{}://{}:{}/resources/json/delphix/'.format(protocol, ip_address, port)
         headers = self.headers
         api_url = '{0}session'.format(api_url_base)
         try:
@@ -55,7 +60,10 @@ class virtualization():
             return None
 
     def login_api_session(self, ip_address, cookies, apicall, payload, port=80):
-        api_url_base = 'http://{}:{}/resources/json/delphix/'.format(ip_address, port)
+        protocol = self.protocol
+        if protocol == "https":
+            port = 443          
+        api_url_base = '{}://{}:{}/resources/json/delphix/'.format(protocol,ip_address, port)
         headers = self.headers
         api_url = '{0}{1}'.format(api_url_base, apicall)
         try:
@@ -76,7 +84,10 @@ class virtualization():
             return None
 
     def get_api_response(self, ip_address, cookies, apicall, port=80):
-        api_url_base = 'http://{}:{}/resources/json/delphix/'.format(ip_address, port)
+        protocol = self.protocol
+        if protocol == "https":
+            port = 443        
+        api_url_base = '{}://{}:{}/resources/json/delphix/'.format(protocol,ip_address, port)
         headers = self.headers
         api_url = '{0}{1}'.format(api_url_base, apicall)
         try:
@@ -96,7 +107,10 @@ class virtualization():
             return None
 
     def post_api_response(self, ip_address, cookies, apicall, payload, mrthod, port=80):
-        api_url_base = 'http://{}:{}/resources/json/delphix/'.format(ip_address, port)
+        protocol = self.protocol
+        if protocol == "https":
+            port = 443        
+        api_url_base = '{}://{}:{}/resources/json/delphix/'.format(protocol,ip_address, port)
         headers = self.headers
         api_url = '{0}{1}'.format(api_url_base, apicall)
         try:

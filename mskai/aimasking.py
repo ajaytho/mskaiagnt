@@ -982,7 +982,8 @@ class aimasking():
                     srcapiresponse = self.post_api_response1(src_engine_name, srcapikey, srcapicall, envdef, port=80)
                     
                     tgtapikey = self.get_auth_key(tgt_engine_name)
-                    tgtapicall = "import?force_overwrite=true&environment_id={}".format(tgt_env_id)
+                    #tgtapicall = "import?force_overwrite=true&environment_id={}".format(tgt_env_id)
+                    tgtapicall = "import?force_overwrite=true&environment_id={}&source_environment_id={}".format(tgt_env_id,src_env_id)
                     tgtapiresponse = self.post_api_response1(tgt_engine_name, tgtapikey, tgtapicall, srcapiresponse, port=80)                
                     print(" Environment synced successfully. Please update password for connectors in this environment using GUI / API")
     
@@ -1030,7 +1031,8 @@ class aimasking():
                 
                 print_debug("Target Env Id = {}, Target App Id = {}".format(tgt_env_id, tgt_app_id))
                                 
-                tgtapicall = "import?force_overwrite=true&environment_id={}".format(tgt_env_id)
+                #tgtapicall = "import?force_overwrite=true&environment_id={}".format(tgt_env_id)
+                tgtapicall = "import?force_overwrite=true&environment_id={}&source_environment_id={}".format(tgt_env_id,src_env_id)
                 tgtapiresponse = self.post_api_response1(tgt_engine_name, tgtapikey, tgtapicall, srcapiresponse, port=80)                
                 print(" Environment {} synced successfully. Please update password for connectors in this environment using GUI / API".format(src_env_name))
                 print(" ")
@@ -1155,6 +1157,9 @@ class aimasking():
                     else:
                         print(" Env : {:20}, Connector : {:15} --> {}.".format(src_conn_envname,src_conn_name,"Connection Failed"))
 
+            print(" ")
+            print(" ")
+            print(" Below functionality is under development. Please ignore any errors......")
             print(" Test Mainframe Connectors:")
             syncobjapicall = "mainframe-dataset-connectors?page_number=1"
             syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
