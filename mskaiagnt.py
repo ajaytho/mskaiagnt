@@ -471,7 +471,7 @@ def run_job(config, jobname, envname, run, mock, username, password, protocol):
         scriptdir = os.path.dirname(os.path.abspath(__file__))
         outputdir = os.path.join(scriptdir, 'output')
         aive = virtualization(config, config_file_path='./dxtools.conf', scriptdir=scriptdir, outputdir=outputdir, protocol=protocol)
-        aive.gen_cpu_file()
+        #aive.gen_cpu_file()
         print_debug("Capture CPU usage data : done")
     except:
         print("Error in VE module")
