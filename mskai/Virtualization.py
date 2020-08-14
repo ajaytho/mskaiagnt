@@ -36,14 +36,17 @@ class virtualization():
 
     def create_api_session(self, ip_address, port=80):
         protocol = self.protocol
+        print_debug("protocol = {}, port ={}".format(protocol,port))
         if protocol == "https":
-            port = 443        
+            port = 443
+        print_debug("New protocol = {}, port ={}".format(protocol,port))
         apiversion = {'type': 'APISession', 'version': {'type': 'APIVersion', "major": 1, "minor": 9, "micro": 3}}
         api_url_base = '{}://{}:{}/resources/json/delphix/'.format(protocol, ip_address, port)
+        print_debug("api_url_base = {}".format(api_url_base))
         headers = self.headers
         api_url = '{0}session'.format(api_url_base)
         try:
-            response = requests.post(api_url, headers=headers, json=apiversion)
+            response = requests.post(api_url, headers=headers, json=apiversion, verify=False)
             if response.status_code == 200:
                 data = json.loads(response.content.decode('utf-8'))
                 if data['status'] == "OK":
@@ -61,8 +64,10 @@ class virtualization():
 
     def login_api_session(self, ip_address, cookies, apicall, payload, port=80):
         protocol = self.protocol
+        print_debug("protocol = {}, port ={}".format(protocol,port))
         if protocol == "https":
-            port = 443          
+            port = 443
+        print_debug("New protocol = {}, port ={}".format(protocol,port))          
         api_url_base = '{}://{}:{}/resources/json/delphix/'.format(protocol,ip_address, port)
         headers = self.headers
         api_url = '{0}{1}'.format(api_url_base, apicall)
@@ -85,8 +90,10 @@ class virtualization():
 
     def get_api_response(self, ip_address, cookies, apicall, port=80):
         protocol = self.protocol
+        print_debug("protocol = {}, port ={}".format(protocol,port))
         if protocol == "https":
-            port = 443        
+            port = 443
+        print_debug("New protocol = {}, port ={}".format(protocol,port))       
         api_url_base = '{}://{}:{}/resources/json/delphix/'.format(protocol,ip_address, port)
         headers = self.headers
         api_url = '{0}{1}'.format(api_url_base, apicall)
@@ -108,8 +115,10 @@ class virtualization():
 
     def post_api_response(self, ip_address, cookies, apicall, payload, mrthod, port=80):
         protocol = self.protocol
+        print_debug("protocol = {}, port ={}".format(protocol,port))
         if protocol == "https":
-            port = 443        
+            port = 443
+        print_debug("New protocol = {}, port ={}".format(protocol,port))        
         api_url_base = '{}://{}:{}/resources/json/delphix/'.format(protocol,ip_address, port)
         headers = self.headers
         api_url = '{0}{1}'.format(api_url_base, apicall)
