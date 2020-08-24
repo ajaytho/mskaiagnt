@@ -162,7 +162,7 @@ class virtualization():
                 rs = stdout.split()[0]
                 rs = rs.decode("utf-8")
                 print_debug("rs: {}".format(rs))
-                if rs == "OK:":
+                if rs == "OK:" or "CRITICAL:" or "WARNING:":
                     cpuvalue = stdout.split()[-1:][0]
                     cpuvalue = cpuvalue.decode("utf-8")
                     f = open(self.enginecpulistfile, "a")
@@ -170,6 +170,10 @@ class virtualization():
                     f.close()
                 else:
                     print("Engine {} : Unable to pull cpu data".format(engine))
+                    f = open(self.enginecpulistfile, "a")
+                    f.write("{},{}\n".format(engine, "0"))
+                    f.close()
+
             except:
                 #print_debug("Engine {} : Error for get_cpu_raw_data".format(engine['ip_address']))
                 print_debug("Engine {} : Unable to pull cpu data".format(engine))
