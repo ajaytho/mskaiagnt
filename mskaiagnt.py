@@ -29,7 +29,7 @@
 #   -e      Environment Name of Masking job
 #   -j      Masking Job Id
 # ================================================================================
-VERSION = "1.0.3"
+VERSION = "1.0.4"
 
 import collections
 import os
@@ -424,9 +424,11 @@ def cleanup_eng(config, mskengname, username, password, protocol):
 @click.password_option('--password', '-p', default='mskenv',
                        help='Masking mskaiagnt password to connect masking engines')
 @click.option('--protocol', default='http', prompt='Enter protocol http|https to access Masking Engines',
-              help='http protocol')                       
+              help='http protocol')
+@click.option('--dxtoolkit_path', default='', prompt='Enter dxtoolkit path',
+              help='dxtoolkit full path')                                 
 @pass_config
-def run_job(config, jobname, envname, run, mock, username, password, protocol):
+def run_job(config, jobname, envname, run, mock, username, password, protocol,dxtoolkit_path):
     """ This module will execute masking job on best candidate engine"""
 
     print_banner()
@@ -442,6 +444,7 @@ def run_job(config, jobname, envname, run, mock, username, password, protocol):
         print_debug('mock     = {0}'.format(mock))
         print_debug('username = {0}'.format(username))
         print_debug('protocol      = {0}'.format(protocol))
+        print_debug('dxtoolkit_path = {0}'.format(dxtoolkit_path))
 
     globals.arguments['--debug'] = config.debug
     globals.arguments['--config'] = './dxtools.conf'
@@ -452,6 +455,7 @@ def run_job(config, jobname, envname, run, mock, username, password, protocol):
     globals.arguments['--poll'] = '10'
     globals.arguments['--version'] = False
     globals.arguments['--single_thread'] = True
+    globals.arguments['--dxtoolkit_path'] = dxtoolkit_path
 
     try:
         mskai = aimasking(config, jobname=jobname, envname=envname, run=run, mock=mock, username=username, password=password, protocol=protocol)
@@ -470,8 +474,12 @@ def run_job(config, jobname, envname, run, mock, username, password, protocol):
         print_debug("Capture CPU usage data...")
         scriptdir = os.path.dirname(os.path.abspath(__file__))
         outputdir = os.path.join(scriptdir, 'output')
-        aive = virtualization(config, config_file_path='./dxtools.conf', scriptdir=scriptdir, outputdir=outputdir, protocol=protocol)
-        #aive.gen_cpu_file()
+        print(" ")
+        print(" ")
+        print_debug("dxtoolkit_path: {}".format(dxtoolkit_path))
+        aive = virtualization(config, config_file_path='./dxtools.conf', scriptdir=scriptdir, outputdir=outputdir, protocol=protocol, dxtoolkit_path=dxtoolkit_path)
+        print_debug("dxtoolkit_path: {}".format(dxtoolkit_path))
+        aive.gen_cpu_file()
         print_debug("Capture CPU usage data : done")
     except:
         print("Error in VE module")

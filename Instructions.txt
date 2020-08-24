@@ -25,11 +25,11 @@
 ./mskaiagnt pull-joblist -m all --username admin --password xxxxxx --protocol http
 
 # Run job - simulataion
-./mskaiagnt run-job -j maskjob6 -e mskdevenv --username admin --password xxxxxx
-./mskaiagnt -v run-job -j maskjob6 -e mskdevenv --username admin --password xxxxxx
+./mskaiagnt run-job -j maskjob6 -e mskdevenv --username admin --password xxxxxx --protocol https --dxtoolkit_path /home/ubuntu/WSL/dxtoolkit2
+./mskaiagnt -v run-job -j maskjob6 -e mskdevenv --username admin --password xxxxxx --protocol https --dxtoolkit_path /home/ubuntu/WSL/dxtoolkit2
 
 # Real run
-./mskaiagnt -v run-job -j maskjob6 -e mskdevenv --username admin --password xxxxxx -r
+./mskaiagnt -v run-job -j maskjob6 -e mskdevenv --username admin --password xxxxxx --protocol https --dxtoolkit_path /home/ubuntu/WSL/dxtoolkit2 -r
 
 # Sync Eng
 ./mskaiagnt sync-eng --srcmskengname atmskengine01 --tgtmskengname atmskengine02 -g --username admin --password xxxxxx

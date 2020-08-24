@@ -8,7 +8,7 @@ import requests
 import mskai.globals as globals
 from mskai.DxLogging import print_debug
 from mskai.veconfig import loadveconfig
-
+import subprocess
 
 class virtualization():
     def __init__(self, config, **kwargs):
@@ -24,6 +24,8 @@ class virtualization():
             self.outputdir = kwargs['outputdir']
         if "protocol" in kwargs.keys():
             self.protocol = kwargs['protocol']
+        if "dxtoolkit_path" in kwargs.keys():
+            self.dxtoolkit_path = kwargs['dxtoolkit_path']
 
         self.headers = {'Content-Type': 'application/json'}
 
@@ -145,13 +147,32 @@ class virtualization():
         f.close()
         dlpxconfig = loadveconfig()
         config_file_path = self.config_file_path
+        dxtoolkit_path = self.dxtoolkit_path
         dlpxconfig.get_config(config_file_path)
         for engine in dlpxconfig.dlpx_engines:
             try:
                 # print_debug(dlpxconfig.dlpx_engines[engine])
-                self.get_cpu_raw_data(dlpxconfig.dlpx_engines[engine])
+                # self.get_cpu_raw_data(dlpxconfig.dlpx_engines[engine])
+                # print("engine = {}".format(engine))
+                print_debug("dxtoolkit_path: {}, config_file_path:{}, engine: {}".format(dxtoolkit_path + '/dx_get_cpu',config_file_path, engine))
+                out = subprocess.Popen([dxtoolkit_path + '/dx_get_cpu', '-d', engine, '-configfile', config_file_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                print_debug("out = {}".format(out))
+                stdout, stderr = out.communicate()
+                print_debug("stdout: {} ,stderr: {}".format(stdout,stderr))
+                rs = stdout.split()[0]
+                rs = rs.decode("utf-8")
+                print_debug("rs: {}".format(rs))
+                if rs == "OK:":
+                    cpuvalue = stdout.split()[-1:][0]
+                    cpuvalue = cpuvalue.decode("utf-8")
+                    f = open(self.enginecpulistfile, "a")
+                    f.write("{},{}\n".format(engine, cpuvalue))
+                    f.close()
+                else:
+                    print("Engine {} : Unable to pull cpu data".format(engine))
             except:
-                print_debug("Engine {} : Error for get_cpu_raw_data".format(engine['ip_address']))
+                #print_debug("Engine {} : Error for get_cpu_raw_data".format(engine['ip_address']))
+                print_debug("Engine {} : Unable to pull cpu data".format(engine))
 
     def get_cpu_raw_data(self, engine):
         # engine = {'ip_address' : 'ajaydlpx6pri.dcenter.delphix.com' , 'username' : 'admin' , 'password' : 'delphix'}

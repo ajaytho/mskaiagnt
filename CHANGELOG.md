@@ -26,3 +26,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 ### Added
 - Bugfix : Added support for https protocol to VE
 - Bugfix : On the fly masking for mainframe expects source_env_id. Added source_env_id
+
+## [1.0.4] - 2020-08-24
+### Added
+- Bugfix : Added support for cpu using dx_toolkit to handle encrypted passwords

@@ -36,7 +36,6 @@ def print_debug(print_obj, debug=False):
     :rtype: None
     """
     debug = globals.debug
-
     try:
         if debug is True:
             #print ('DEBUG: {}'.format(str('S----------------------------------------------------------------------------------------')))
