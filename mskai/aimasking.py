@@ -289,7 +289,6 @@ class aimasking():
             print_debug("Not able to open file {}".format(self.enginelistfile))
 
     def del_engine(self):
-        csvdir = self.outputdir
         newenginelist = []
         try:
             i = 0
@@ -437,6 +436,10 @@ class aimasking():
                 cnt += 1
         return r
 
+    def add_debugspace(self):
+        print_debug(" ")
+        print_debug(" ")
+
     # @track
     def run_job(self):
         if self.config.debug:
@@ -456,6 +459,10 @@ class aimasking():
         jobexec_list = self.create_dictobj(self.jobexeclistfile)
         enginecpu_list = self.create_dictobj(self.enginecpulistfile)
 
+        self.add_debugspace()
+        print_debug("enginecpu_list:{}".format(enginecpu_list))
+        self.add_debugspace()
+
         engine_list = self.create_dictobj(self.enginelistfile)
         print_debug("engine_list:\n{}".format(engine_list))
 
@@ -470,10 +477,13 @@ class aimasking():
         engine_list = enginelist
 
         joblistunq = self.unqlist(job_list, 'ip_address')
-        print_debug("joblistunq:\n{}".format(joblistunq))
+        print_debug("joblistunq:{}".format(joblistunq))
         jobreqlist = self.get_jobreqlist(joblistunq, self.jobname, self.envname)
-        print_debug("jobreqlist:\n{}".format(jobreqlist))
-        
+        print_debug("jobreqlist:{}".format(jobreqlist))
+        if len(jobreqlist) == 0:
+            print_red_on_white = lambda x: cprint(x, 'red', 'on_white')            
+            print_red_on_white('Job : {} in Environment: {} does not exists on any masking server. Please recheck job name / environment and resubmit.'.format(self.jobname, self.envname))
+            sys.exit(1)
         engine_pool_for_job = self.get_jobreqlist(job_list, self.jobname, self.envname)
         print_debug("engine_pool_for_job:\n{}\n".format(engine_pool_for_job))
         for job in engine_pool_for_job:
@@ -542,6 +552,9 @@ class aimasking():
 
         if len(enginecpu_list) != 0:
             engineusage = self.join_dict(engineusage_od, enginecpu_list, 'ip_address', 'cpu')
+            self.add_debugspace()
+            print_debug("engineusage:{}".format(engineusage))
+            self.add_debugspace()
             if self.config.verbose or self.config.debug:
                 for ind in engineusage:
                     print('{0:>1}{1:<35}{2:>20}{3:>20}'.format(" ", ind['ip_address'], ind['totalusedmemory'],
@@ -549,6 +562,10 @@ class aimasking():
         else:
             print("Handle this situation")
 
+
+        self.add_debugspace()
+        print_debug("enginecpu_list:{}".format(enginecpu_list))
+        self.add_debugspace()
         print_debug('engineusage_od = \n{}\n'.format(engineusage_od))
         print_debug('enginecpu_list = \n{}\n'.format(enginecpu_list))
         print_debug('engineusage = \n{}\n'.format(engineusage))
@@ -982,8 +999,16 @@ class aimasking():
                     srcapiresponse = self.post_api_response1(src_engine_name, srcapikey, srcapicall, envdef, port=80)
                     
                     tgtapikey = self.get_auth_key(tgt_engine_name)
+
+                    # Create dummy app to handle on the fly masking job/env
+                    cr_app_response = self.create_application(tgt_engine_name, "src_dummy_conn_app")
+                    src_dummy_conn_app_id = cr_app_response['applicationId']
+
+                    cr_env_response = self.create_environment(tgt_engine_name, tgt_app_id, "src_dummy_conn_env", src_env_purpose)
+                    src_dummy_conn_env_id = cr_env_response['environmentId']
+
                     #tgtapicall = "import?force_overwrite=true&environment_id={}".format(tgt_env_id)
-                    tgtapicall = "import?force_overwrite=true&environment_id={}&source_environment_id={}".format(tgt_env_id,src_env_id)
+                    tgtapicall = "import?force_overwrite=true&environment_id={}&source_environment_id={}".format(tgt_env_id,src_dummy_conn_env_id)
                     tgtapiresponse = self.post_api_response1(tgt_engine_name, tgtapikey, tgtapicall, srcapiresponse, port=80)                
                     print(" Environment synced successfully. Please update password for connectors in this environment using GUI / API")
     
@@ -1030,9 +1055,16 @@ class aimasking():
                 tgt_env_id = cr_env_response['environmentId']
                 
                 print_debug("Target Env Id = {}, Target App Id = {}".format(tgt_env_id, tgt_app_id))
-                                
+
+                # Create dummy app to handle on the fly masking job/env
+                cr_app_response = self.create_application(tgt_engine_name, "src_dummy_conn_app")
+                src_dummy_conn_app_id = cr_app_response['applicationId']
+
+                cr_env_response = self.create_environment(tgt_engine_name, tgt_app_id, "src_dummy_conn_env", src_env_purpose)
+                src_dummy_conn_env_id = cr_env_response['environmentId']
+
                 #tgtapicall = "import?force_overwrite=true&environment_id={}".format(tgt_env_id)
-                tgtapicall = "import?force_overwrite=true&environment_id={}&source_environment_id={}".format(tgt_env_id,src_env_id)
+                tgtapicall = "import?force_overwrite=true&environment_id={}&source_environment_id={}".format(tgt_env_id,src_dummy_conn_env_id)
                 tgtapiresponse = self.post_api_response1(tgt_engine_name, tgtapikey, tgtapicall, srcapiresponse, port=80)                
                 print(" Environment {} synced successfully. Please update password for connectors in this environment using GUI / API".format(src_env_name))
                 print(" ")

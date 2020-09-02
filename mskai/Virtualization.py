@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from datetime import datetime, timedelta
 from statistics import mean
 
@@ -156,20 +157,29 @@ class virtualization():
                 # print("engine = {}".format(engine))
                 print_debug("dxtoolkit_path: {}, config_file_path:{}, engine: {}".format(dxtoolkit_path + '/dx_get_cpu',config_file_path, engine))
                 out = subprocess.Popen([dxtoolkit_path + '/dx_get_cpu', '-d', engine, '-configfile', config_file_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-                print_debug("out = {}".format(out))
+                #print_debug("out = {}".format(out))
                 stdout, stderr = out.communicate()
-                print_debug("stdout: {} ,stderr: {}".format(stdout,stderr))
-                rs = stdout.split()[0]
-                rs = rs.decode("utf-8")
-                print_debug("rs: {}".format(rs))
-                if rs == "OK:" or "CRITICAL:" or "WARNING:":
-                    cpuvalue = stdout.split()[-1:][0]
-                    cpuvalue = cpuvalue.decode("utf-8")
-                    f = open(self.enginecpulistfile, "a")
-                    f.write("{},{}\n".format(engine, cpuvalue))
-                    f.close()
+                print_debug("stdout: {} ,stderr: {}".format(stdout, stderr))
+
+                r1 = re.findall(r"Can't connect",stdout.decode("utf-8"))
+                if not r1:
+                    rs = stdout.split()[0]
+                    rs = rs.decode("utf-8")
+                    print_debug("rs: {}".format(rs))
+                    if rs == "OK:" or "CRITICAL:" or "WARNING:":
+                        cpuvalue = stdout.split()[-1:][0]
+                        cpuvalue = cpuvalue.decode("utf-8")
+                        f = open(self.enginecpulistfile, "a")
+                        f.write("{},{}\n".format(engine, cpuvalue))
+                        f.close()
+                        print("Engine {} : pulled cpu data - OK".format(engine))
+                    else:
+                        print("Engine {} : Unable to pull cpu data".format(engine))
+                        f = open(self.enginecpulistfile, "a")
+                        f.write("{},{}\n".format(engine, "0"))
+                        f.close()
                 else:
-                    print("Engine {} : Unable to pull cpu data".format(engine))
+                    print("Engine {} : Unable to connect and pull cpu data. Defualt 0".format(engine))
                     f = open(self.enginecpulistfile, "a")
                     f.write("{},{}\n".format(engine, "0"))
                     f.close()

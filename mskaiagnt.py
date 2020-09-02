@@ -29,7 +29,7 @@
 #   -e      Environment Name of Masking job
 #   -j      Masking Job Id
 # ================================================================================
-VERSION = "1.0.5"
+VERSION = "1.0.6"
 
 import collections
 import os
@@ -73,7 +73,7 @@ class OrderedGroup(click.Group):
 def print_banner():
     bannertext = banner()
     mybannero = bannertext.banner_sl_box_open(text="Artificial Intellegence.")
-    mybannera = bannertext.banner_sl_box_addline(text="AI Agent for Delphix Masking Server")
+    mybannera = bannertext.banner_sl_box_addline(text="AI Agent for Delphix Masking Server - {}".format(VERSION))
     mybannerc = bannertext.banner_sl_box_close()
     #print(mybannero)
     print(mybannera)
@@ -91,7 +91,6 @@ def cli(config, verbose, debug):
         config.verbose = verbose
     if debug:
         config.debug = debug
-    click.echo(VERSION)
 
 # gen-dxtoolsconf
 @cli.command()
@@ -471,16 +470,22 @@ def run_job(config, jobname, envname, run, mock, username, password, protocol,dx
         return
 
     try:
+        print_debug(" ")
+        print_debug(" ")
+        print_debug(" ")
+        print_debug(" ")         
         print_debug("Capture CPU usage data...")
         scriptdir = os.path.dirname(os.path.abspath(__file__))
         outputdir = os.path.join(scriptdir, 'output')
-        print(" ")
-        print(" ")
         print_debug("dxtoolkit_path: {}".format(dxtoolkit_path))
         aive = virtualization(config, config_file_path='./dxtools.conf', scriptdir=scriptdir, outputdir=outputdir, protocol=protocol, dxtoolkit_path=dxtoolkit_path)
         print_debug("dxtoolkit_path: {}".format(dxtoolkit_path))
         aive.gen_cpu_file()
         print_debug("Capture CPU usage data : done")
+        print_debug(" ")
+        print_debug(" ")
+        print_debug(" ")
+        print_debug(" ")    
     except:
         print("Error in VE module")
         return
