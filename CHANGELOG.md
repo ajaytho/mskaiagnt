@@ -40,3 +40,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 - Feature : Added support to sync environment with on the fly masking jobs
 - Bugfix  : Provide user friendly message if job does not exists in any engine 
 - BufFix  : Set cpu as 0 if not able to connect VE mgmt stack and proceed
+
+## [1.1.0] - 2020-09-03
+### Added
+- Feature : Added support to backup / restore engine objects to / from filesystem

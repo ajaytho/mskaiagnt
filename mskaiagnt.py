@@ -29,7 +29,7 @@
 #   -e      Environment Name of Masking job
 #   -j      Masking Job Id
 # ================================================================================
-VERSION = "1.0.6"
+VERSION = "1.1.0"
 
 import collections
 import os
@@ -544,6 +544,78 @@ def list_green_eng(config, username, password, protocol):
     try:
         mskai = aimasking(config, username=username, password=password, protocol=protocol)
         mskai.list_green_eng()
+    except Exception as e:
+        print("Error in MSK module")
+        print(str(e))
+        return
+
+# offline_backup_eng
+@cli.command()
+@click.option('--mskengname', default='', prompt='Enter Masking Engine name',
+              help='Masking Engine name')
+@click.option('--backup_dir', default='', prompt='Enter Backup Path',
+              help='Backup Path')                                  
+@click.option('--username', '-u', prompt='Enter Masking username',
+                       help='Masking mskaiagnt username to connect masking engines')
+@click.password_option('--password', '-p',
+                       help='Masking mskaiagnt password to connect masking engines')
+@click.option('--protocol', default='http', prompt='Enter protocol http|https to access Masking Engines',
+              help='http protocol')                       
+@pass_config
+def offline_backup_eng(config, mskengname, username, password, protocol, backup_dir):
+    """ This module will offline backup engine"""
+
+    print_banner()
+    if config.debug:
+        globals.initialize()
+        globals.debug = config.debug
+
+    if config.verbose:
+        print_debug('Verbose mode enabled')
+        print_debug('mskengname    = {0}'.format(mskengname))      
+        print_debug('username      = {0}'.format(username))
+        print_debug('protocol      = {0}'.format(protocol))
+        print_debug('backup_dir    = {0}'.format(backup_dir))
+
+    try:
+        mskai = aimasking(config, mskengname=mskengname, username=username, password=password, protocol=protocol, backup_dir=backup_dir)
+        mskai.offline_backup_eng()
+    except Exception as e:
+        print("Error in MSK module")
+        print(str(e))
+        return
+
+# offline_restore_eng
+@cli.command()
+@click.option('--mskengname', default='', prompt='Enter Masking Engine name',
+              help='Masking Engine name')
+@click.option('--backup_dir', default='', prompt='Enter Backup Path',
+              help='Backup Path')                                  
+@click.option('--username', '-u', prompt='Enter Masking username',
+                       help='Masking mskaiagnt username to connect masking engines')
+@click.password_option('--password', '-p',
+                       help='Masking mskaiagnt password to connect masking engines')
+@click.option('--protocol', default='http', prompt='Enter protocol http|https to access Masking Engines',
+              help='http protocol')                       
+@pass_config
+def offline_restore_eng(config, mskengname, username, password, protocol, backup_dir):
+    """ This module will offline restore engine from backups"""
+
+    print_banner()
+    if config.debug:
+        globals.initialize()
+        globals.debug = config.debug
+
+    if config.verbose:
+        print_debug('Verbose mode enabled')
+        print_debug('mskengname    = {0}'.format(mskengname))      
+        print_debug('username      = {0}'.format(username))
+        print_debug('protocol      = {0}'.format(protocol))
+        print_debug('backup_dir    = {0}'.format(backup_dir))
+
+    try:
+        mskai = aimasking(config, mskengname=mskengname, username=username, password=password, protocol=protocol, backup_dir=backup_dir)
+        mskai.offline_restore_eng()
     except Exception as e:
         print("Error in MSK module")
         print(str(e))

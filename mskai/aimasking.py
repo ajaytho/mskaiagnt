@@ -3,6 +3,8 @@ import csv
 import json
 import os
 import sys
+import datetime
+import pickle
 from collections import Counter
 from csv import DictReader
 from sys import exit
@@ -81,6 +83,8 @@ class aimasking():
             self.protocol = kwargs['protocol']
         else:
             self.protocol = "http"
+        if "backup_dir" in kwargs.keys():
+            self.backup_dir = kwargs['backup_dir']
         self.outputdir = os.path.join(self.scriptdir, 'output')
         self.outputfilename = 'output.txt'
         self.report_output = os.path.join(self.scriptdir, 'output', self.outputfilename)
@@ -1073,6 +1077,175 @@ class aimasking():
     
         else:
             print (" Error connecting source engine {}".format(src_engine_name))
+
+    def cr_dir(self,dirname):
+        if not os.path.exists(dirname):
+            try:
+                os.makedirs(dirname)
+            except Exception as e:
+                print("Unable to create directory {}. Please check permissions".format(dirname)) 
+
+    def cr_backup_dirs(self):
+        backup_dir = self.backup_dir
+        x = datetime.datetime.now()
+        x_dateformat = x.strftime("%m%d%Y_%H%M%S")
+
+        bkp_main_dir = os.path.join(backup_dir, x_dateformat)
+        self.cr_dir(bkp_main_dir)
+        
+        globalobjects_dir = os.path.join(bkp_main_dir, "globalobjects")
+        self.cr_dir(globalobjects_dir) 
+
+        environments_dir = os.path.join(bkp_main_dir, "environments")
+        self.cr_dir(environments_dir) 
+
+        applications_dir = os.path.join(bkp_main_dir, "applications")
+        self.cr_dir(applications_dir)
+
+        print("Created directory structure for backups")
+
+        return bkp_main_dir
+
+    def bkp_syncable_objects(self, syncable_object_type, bkp_main_dir):
+        src_engine_name = self.mskengname
+        i = None
+        srcapikey = self.get_auth_key(src_engine_name)
+        if srcapikey is not None:
+            syncobjapicall = "syncable-objects?page_number=1&object_type={}".format(syncable_object_type)
+            syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
+            for syncable_object_type_elem in syncobjapicallresponse['responseList']:
+                i = 1
+                syncable_object_type_def = []
+                syncable_object_type_def.append(syncable_object_type_elem)                                        
+                srcapicall = "export"
+                srcapiresponse = self.post_api_response1(src_engine_name, srcapikey, srcapicall, syncable_object_type_def, port=80)
+
+                syncobj_bkp_dict = { "syncable_object_type": syncable_object_type, "srcapiresponse": srcapiresponse }
+                syncobj_bkp_file = "{}/globalobjects/backup_{}.dat".format(bkp_main_dir,syncable_object_type)
+                with open(syncobj_bkp_file, 'wb') as fh:
+                    pickle.dump(syncobj_bkp_dict, fh)
+                print("Created backup of syncable_object_type {}".format(syncable_object_type))   
+        else:
+            print(" Error connecting source engine {}".format(src_engine_name))
+
+    def bkp_globalobj(self,bkp_main_dir):
+        self.bkp_syncable_objects("GLOBAL_OBJECT",bkp_main_dir)
+        self.bkp_syncable_objects("FILE_FORMAT",bkp_main_dir)
+        self.bkp_syncable_objects("MOUNT_INFORMATION",bkp_main_dir)
+        
+    def offline_backup_eng(self):
+        src_engine_name = self.mskengname       
+        srcapikey = self.get_auth_key(src_engine_name)
+        print_debug("srcapikey={}".format(srcapikey))
+        if srcapikey is not None:
+            bkp_main_dir = self.cr_backup_dirs()
+            self.bkp_globalobj(bkp_main_dir)
+
+            syncobjapicall = "syncable-objects?page_number=1&object_type=ENVIRONMENT"
+            syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
+            
+            for envobj in syncobjapicallresponse['responseList']:
+                
+                envdef = []
+                envdef.append(envobj)
+                src_env_id = envobj['objectIdentifier']['id']
+                src_env_name = self.find_env_name(src_env_id, src_engine_name)
+                src_env_purpose = self.find_env_purpose(src_env_id, src_engine_name)
+                src_app_id = self.find_appid_of_envid(src_env_id, src_engine_name)
+                src_app_name = self.find_app_name(src_app_id, src_engine_name)
+                print_debug("Source Env name = {}, Source Env purpose = {}, Source App name = {}, Source Env Id = {}, Source App Id = {}".format(src_env_name, src_env_purpose, src_app_name,src_env_id,src_app_id))
+                
+                srcapicall = "export"
+                srcapiresponse = self.post_api_response1(src_engine_name, srcapikey, srcapicall, envdef, port=80)
+                
+                env_bkp_dict = { "src_app_id": src_app_id, "src_app_name": src_app_name, "src_env_id": src_env_id , "src_env_name": src_env_name, "src_env_purpose": src_env_purpose, "srcapiresponse": srcapiresponse }
+                env_bkp_file = "{}/environments/backup_env_{}.dat".format(bkp_main_dir,src_env_id)
+                with open(env_bkp_file, 'wb') as fh:
+                    pickle.dump(env_bkp_dict, fh)
+                print("Created backup of environment {}".format(src_env_name))
+    
+        else:
+            print (" Error connecting source engine {}".format(src_engine_name))
+
+    def restore_globalobj(self, syncable_object_type, tgtapikey, tgt_engine_name, srcapiresponse, bkp_main_dir):
+        tgtapicall = "import?force_overwrite=true"
+        tgtapiresponse = self.post_api_response1(tgt_engine_name, tgtapikey, tgtapicall, srcapiresponse, port=80)
+        if tgtapiresponse is None:
+            print(" Failed to restore Syncable Object {}".format(syncable_object_type))
+        else:
+            print("Restored syncable_object_type: {}".format(syncable_object_type))
+
+    def offline_restore_eng(self):
+        tgt_engine_name = self.mskengname       
+        tgtapikey = self.get_auth_key(tgt_engine_name)
+        print_debug("tgtapikey={}".format(tgtapikey))
+        if tgtapikey is not None:
+            backup_dir = self.backup_dir
+            print_debug("backup_dir: {}".format(backup_dir))
+
+            globalobj_bkp_dict_file_fullpath = "{}/{}/{}".format(backup_dir, "globalobjects", "backup_GLOBAL_OBJECT.dat")
+            with open(globalobj_bkp_dict_file_fullpath, 'rb') as f1:
+                globalobj_bkp_dict = pickle.load(f1)
+                syncable_object_type = globalobj_bkp_dict['syncable_object_type']
+                srcapiresponse = globalobj_bkp_dict['srcapiresponse']
+                self.restore_globalobj(syncable_object_type, tgtapikey, tgt_engine_name, srcapiresponse, backup_dir)
+
+            syncobj_bkp_dict_file_arr = os.listdir("{}/globalobjects".format(backup_dir))
+            print_debug("syncobj_bkp_dict_file_arr: {}".format(syncobj_bkp_dict_file_arr))
+            for syncobj_bkp_dict_file in syncobj_bkp_dict_file_arr:
+                if syncobj_bkp_dict_file != "backup_GLOBAL_OBJECT.dat":
+                    # Global Object is already done so skipped. Looking for mount, fileformat etc
+                    print_debug("syncobj_bkp_dict_file: {}".format(syncobj_bkp_dict_file))
+                    syncobj_bkp_dict_file_fullpath = "{}/{}/{}".format(backup_dir, "globalobjects", syncobj_bkp_dict_file)
+                    print_debug("syncobj_bkp_dict_file_fullpath: {}".format(syncobj_bkp_dict_file_fullpath))
+                    with open(syncobj_bkp_dict_file_fullpath, 'rb') as f1:
+                        syncobj_bkp_dict = pickle.load(f1)
+                    #print_debug(syncobj_bkp_dict) # It will be huge
+                    syncable_object_type = syncobj_bkp_dict['syncable_object_type']
+                    srcapiresponse = syncobj_bkp_dict['srcapiresponse']
+                    self.restore_globalobj(syncable_object_type, tgtapikey, tgt_engine_name, srcapiresponse, backup_dir)
+
+            env_bkp_dict_file_arr = os.listdir("{}/environments".format(backup_dir))
+            print_debug("env_bkp_dict_file_arr: {}".format(env_bkp_dict_file_arr))
+            for env_bkp_dict_file in env_bkp_dict_file_arr:
+                print_debug("env_bkp_dict_file: {}".format(env_bkp_dict_file))
+                env_bkp_dict_file_fullpath = "{}/{}/{}".format(backup_dir, "environments", env_bkp_dict_file)
+                print_debug("env_bkp_dict_file_fullpath: {}".format(env_bkp_dict_file_fullpath))
+                with open(env_bkp_dict_file_fullpath, 'rb') as f1:
+                    env_bkp_dict = pickle.load(f1)
+                print_debug(env_bkp_dict)
+
+                src_app_id = env_bkp_dict['src_app_id']
+                src_app_name = env_bkp_dict['src_app_name']
+                src_env_id = env_bkp_dict['src_env_id']
+                src_env_name = env_bkp_dict['src_env_name']
+                src_env_purpose = env_bkp_dict['src_env_purpose']
+                srcapiresponse = env_bkp_dict['srcapiresponse']
+
+                cr_app_response = self.create_application(tgt_engine_name, src_app_name)
+                tgt_app_id = cr_app_response['applicationId']
+
+                cr_env_response = self.create_environment(tgt_engine_name, tgt_app_id, src_env_name, src_env_purpose)
+                tgt_env_id = cr_env_response['environmentId']
+                
+                print_debug("Target Env Id = {}, Target App Id = {}".format(tgt_env_id, tgt_app_id))
+
+                # Create dummy app to handle on the fly masking job/env
+                cr_app_response = self.create_application(tgt_engine_name, "src_dummy_conn_app")
+                src_dummy_conn_app_id = cr_app_response['applicationId']
+
+                cr_env_response = self.create_environment(tgt_engine_name, tgt_app_id, "src_dummy_conn_env", src_env_purpose)
+                src_dummy_conn_env_id = cr_env_response['environmentId']
+
+                tgtapicall = "import?force_overwrite=true&environment_id={}&source_environment_id={}".format(tgt_env_id,src_dummy_conn_env_id)
+                tgtapiresponse = self.post_api_response1(tgt_engine_name, tgtapikey, tgtapicall, srcapiresponse, port=80)                
+                print(" Environment {} synced successfully. Please update password for connectors in this environment using GUI / API".format(src_env_name))
+                print(" ")
+
+                print("Restored environment {}".format(env_bkp_dict['src_env_name']))
+   
+        else:
+            print (" Error connecting source engine {}".format(tgt_engine_name))
 
     def cleanup_eng(self):
         src_engine_name = self.mskengname       
