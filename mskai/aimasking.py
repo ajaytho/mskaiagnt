@@ -1030,9 +1030,16 @@ class aimasking():
             #AJAY UNCOMMENT THIS
             if globalobjsync:
                 self.sync_globalobj()                    
-            #print(" Test Connectors on {} :".format(tgt_engine_name))
-            #self.test_dbconnectors(tgt_engine_name)
-            # REMOVE ABOVE 2 LINES USED FOR TESTING            
+
+            # Create dummy app to handle on the fly masking job/env
+            cr_app_response = self.create_application(tgt_engine_name, "src_dummy_conn_app")
+            src_dummy_conn_app_id = cr_app_response['applicationId']
+
+            # Create dummy env to handle on the fly masking job/env
+            cr_env_response = self.create_environment(tgt_engine_name, src_dummy_conn_app_id, "src_dummy_conn_env", "MASK")
+            src_dummy_conn_env_id = cr_env_response['environmentId']
+
+            #             
             syncobjapicall = "syncable-objects?page_number=1&object_type=ENVIRONMENT"
             syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
 
@@ -1051,7 +1058,7 @@ class aimasking():
                 srcapiresponse = self.post_api_response1(src_engine_name, srcapikey, srcapicall, envdef, port=80)
                 #print_debug("srcapiresponse={}".format(srcapiresponse))
 
-                tgtapikey = self.get_auth_key(tgt_engine_name)
+                # Create dummy app to handle on the fly masking job/env
                 cr_app_response = self.create_application(tgt_engine_name, src_app_name)
                 tgt_app_id = cr_app_response['applicationId']
 
@@ -1060,12 +1067,13 @@ class aimasking():
                 
                 print_debug("Target Env Id = {}, Target App Id = {}".format(tgt_env_id, tgt_app_id))
 
-                # Create dummy app to handle on the fly masking job/env
-                cr_app_response = self.create_application(tgt_engine_name, "src_dummy_conn_app")
-                src_dummy_conn_app_id = cr_app_response['applicationId']
-
-                cr_env_response = self.create_environment(tgt_engine_name, tgt_app_id, "src_dummy_conn_env", src_env_purpose)
-                src_dummy_conn_env_id = cr_env_response['environmentId']
+                ## Create dummy app to handle on the fly masking job/env
+                #cr_app_response = self.create_application(tgt_engine_name, "src_dummy_conn_app")
+                #src_dummy_conn_app_id = cr_app_response['applicationId']
+                #
+                ## Create dummy env to handle on the fly masking job/env
+                #cr_env_response = self.create_environment(tgt_engine_name, src_dummy_conn_app_id, "src_dummy_conn_env", src_env_purpose)
+                #src_dummy_conn_env_id = cr_env_response['environmentId']
 
                 #tgtapicall = "import?force_overwrite=true&environment_id={}".format(tgt_env_id)
                 tgtapicall = "import?force_overwrite=true&environment_id={}&source_environment_id={}".format(tgt_env_id,src_dummy_conn_env_id)
