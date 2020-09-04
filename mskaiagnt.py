@@ -76,6 +76,7 @@ def print_banner():
     mybannera = bannertext.banner_sl_box_addline(text="AI Agent for Delphix Masking Server - {}".format(VERSION))
     mybannerc = bannertext.banner_sl_box_close()
     #print(mybannero)
+    print(" ")
     print(mybannera)
     print(mybannerc)
 
@@ -458,7 +459,8 @@ def run_job(config, jobname, envname, run, mock, username, password, protocol,dx
 
     try:
         mskai = aimasking(config, jobname=jobname, envname=envname, run=run, mock=mock, username=username, password=password, protocol=protocol)
-        mskai.pull_jobexeclist()
+        if not mock:
+            mskai.pull_jobexeclist()
         chk_status = mskai.chk_job_running()
         #print("chk_status={}".format(chk_status))
         if chk_status != 0:

@@ -39,6 +39,8 @@ class aimasking():
         self.qualifiedengineslistfile = globals.qualifiedengineslistfile
         self.enginecpulistfile = globals.enginecpulistfile
         self.config = config
+        self.src_dummy_conn_app = "COMMON_OTF_MSKJOB_SRC_CONN_APP"
+        self.src_dummy_conn_env = "COMMON_OTF_MSKJOB_SRC_CONN_ENV"
 
         #if not os.path.exists(self.enginelistfile):
         #    with open(self.enginelistfile, mode='a'): pass
@@ -397,9 +399,11 @@ class aimasking():
         protocol = self.protocol
         if protocol == "https":
             port = 443
-        api_url_base = '{}://{}:{}/masking/api/'.format(protocol,ip_address, port)
+        api_url_base = '{}://{}:{}/masking/api/'.format(protocol, ip_address, port)
+        
         headers = {'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': '{0}'.format(api_token)}
         api_url = '{0}{1}'.format(api_url_base, apicall)
+        print_debug("api_url: {}".format(api_url))
         response = requests.post(api_url, headers=headers, json=body, verify=False)
         #print(response)
         #data = json.loads(response.content.decode('utf-8'))
@@ -410,7 +414,29 @@ class aimasking():
             data = json.loads(response.content.decode('utf-8'))
             return data            
         else:
-            print_debug(response.content.decode('utf-8'))
+            print(" {}".format(response.content.decode('utf-8')))
+            return None
+
+    def put_api_response(self, ip_address, api_token, apicall, body, port=80):
+        protocol = self.protocol
+        if protocol == "https":
+            port = 443
+        api_url_base = '{}://{}:{}/masking/api/'.format(protocol, ip_address, port)
+        
+        headers = {'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': '{0}'.format(api_token)}
+        api_url = '{0}{1}'.format(api_url_base, apicall)
+        print_debug("api_url: {}".format(api_url))
+        response = requests.put(api_url, headers=headers, json=body, verify=False)
+        #print(response)
+        #data = json.loads(response.content.decode('utf-8'))
+        if response.status_code == 200:
+            data = json.loads(response.content.decode('utf-8'))
+            return data
+        elif response.status_code == 409:
+            data = json.loads(response.content.decode('utf-8'))
+            return data            
+        else:
+            print(" {}".format(response.content.decode('utf-8')))
             return None
 
     def exec_job(self, ip_address, api_token, jobid):
@@ -736,13 +762,13 @@ class aimasking():
                 apikey = self.get_auth_key(engine_name)
                 #print("apikey:{}".format(apikey))
                 if apikey is not None:
-                    apicall = "environments?page_number=1"
+                    apicall = "environments?page_number=1&page_size=999"
                     envlist_response = self.get_api_response(engine_name, apikey, apicall)
 
                     f = open(self.joblistfile, "a")
 
                     for envname in envlist_response['responseList']:
-                        jobapicall = "masking-jobs?page_number=1&environment_id={}".format(envname['environmentId'])
+                        jobapicall = "masking-jobs?page_number=1&page_size=999&environment_id={}".format(envname['environmentId'])
                         joblist_response = self.get_api_response(engine_name, apikey, jobapicall)
                         joblist_responselist = joblist_response['responseList']
                         for joblist in joblist_responselist:
@@ -801,11 +827,11 @@ class aimasking():
             engine_name = self.mskengname
             apikey = self.get_auth_key(engine_name)
             if apikey is not None:
-                apicall = "environments?page_number=1"
+                apicall = "environments?page_number=1&page_size=999"
                 envlist_response = self.get_api_response(engine_name, apikey, apicall)
                 f = open(self.joblistfile, "a")
                 for envname in envlist_response['responseList']:
-                    jobapicall = "masking-jobs?page_number=1&environment_id={}".format(envname['environmentId'])
+                    jobapicall = "masking-jobs?page_number=1&page_size=999&environment_id={}".format(envname['environmentId'])
                     joblist_response = self.get_api_response(engine_name, apikey, jobapicall)
                     joblist_responselist = joblist_response['responseList']
                     for joblist in joblist_responselist:
@@ -842,17 +868,17 @@ class aimasking():
             apikey = self.get_auth_key(engine_name)
             print_debug("apikey : {}".format(apikey))
             if apikey is not None:
-                apicall = "environments?page_number=1"
+                apicall = "environments?page_number=1&page_size=999"
                 envlist_response = self.get_api_response(engine_name, apikey, apicall)
                 for envname in envlist_response['responseList']:
                     print_debug("envname : {}".format(envname))
-                    jobapicall = "masking-jobs?page_number=1&environment_id={}".format(envname['environmentId'])
+                    jobapicall = "masking-jobs?page_number=1&page_size=999&environment_id={}".format(envname['environmentId'])
                     joblist_response = self.get_api_response(engine_name, apikey, jobapicall)
                     joblist_responselist = joblist_response['responseList']
                     for joblist in joblist_responselist:
                         print_debug("joblist : {}".format(joblist))
                         fe = open(self.jobexeclistfile, "a")
-                        jobexecapicall = "executions?job_id={}&page_number=1".format(joblist['maskingJobId'])
+                        jobexecapicall = "executions?job_id={}&page_number=1&page_size=999".format(joblist['maskingJobId'])
                         jobexeclist_response = self.get_api_response(engine_name, apikey, jobexecapicall)
                         jobexeclist_responselist = jobexeclist_response['responseList']
                         if jobexeclist_responselist != []:
@@ -881,7 +907,7 @@ class aimasking():
         srcapikey = self.get_auth_key(src_engine_name)
         if srcapikey is not None:
             if globalfileformats:
-                syncobjapicall = "syncable-objects?page_number=1&object_type=FILE_FORMAT"
+                syncobjapicall = "syncable-objects?page_number=1&page_size=999&object_type=FILE_FORMAT"
                 syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
                 for globalfileobj in syncobjapicallresponse['responseList']:
                     i = 1
@@ -910,7 +936,7 @@ class aimasking():
         srcapikey = self.get_auth_key(src_engine_name)
         if srcapikey is not None:
             if globalmountfs:
-                syncobjapicall = "syncable-objects?page_number=1&object_type=MOUNT_INFORMATION"
+                syncobjapicall = "syncable-objects?page_number=1&page_size=999&object_type=MOUNT_INFORMATION"
                 syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
                 for globalmountfs in syncobjapicallresponse['responseList']:
                     i = 1
@@ -937,7 +963,7 @@ class aimasking():
         i = None
         srcapikey = self.get_auth_key(src_engine_name)
         if srcapikey is not None:
-            syncobjapicall = "syncable-objects?page_number=1&object_type={}".format(syncable_object_type)
+            syncobjapicall = "syncable-objects?page_number=1&page_size=999&object_type={}".format(syncable_object_type)
             syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
             for syncable_object_type_elem in syncobjapicallresponse['responseList']:
                 i = 1
@@ -993,7 +1019,7 @@ class aimasking():
 
         srcapikey = self.get_auth_key(src_engine_name)
         if srcapikey is not None:
-            syncobjapicall = "syncable-objects?page_number=1&object_type=ENVIRONMENT"
+            syncobjapicall = "syncable-objects?page_number=1&page_size=999&object_type=ENVIRONMENT"
             syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
             for envobj in syncobjapicallresponse['responseList']:
                 if envobj['objectIdentifier']['id'] == src_env_id:
@@ -1005,10 +1031,10 @@ class aimasking():
                     tgtapikey = self.get_auth_key(tgt_engine_name)
 
                     # Create dummy app to handle on the fly masking job/env
-                    cr_app_response = self.create_application(tgt_engine_name, "src_dummy_conn_app")
+                    cr_app_response = self.create_application(tgt_engine_name, self.src_dummy_conn_app)
                     src_dummy_conn_app_id = cr_app_response['applicationId']
 
-                    cr_env_response = self.create_environment(tgt_engine_name, tgt_app_id, "src_dummy_conn_env", src_env_purpose)
+                    cr_env_response = self.create_environment(tgt_engine_name, tgt_app_id, self.src_dummy_conn_env, src_env_purpose)
                     src_dummy_conn_env_id = cr_env_response['environmentId']
 
                     #tgtapicall = "import?force_overwrite=true&environment_id={}".format(tgt_env_id)
@@ -1031,26 +1057,28 @@ class aimasking():
         print_debug("tgtapikey={}".format(tgtapikey))
 
         if srcapikey is not None and tgtapikey is not None:
-            #AJAY UNCOMMENT THIS
             if globalobjsync:
                 self.sync_globalobj()                    
+     
+            syncobjapicall = "syncable-objects?page_number=1&page_size=999&object_type=ENVIRONMENT"
+            syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
 
             # Create dummy app to handle on the fly masking job/env
-            cr_app_response = self.create_application(tgt_engine_name, "src_dummy_conn_app")
+            cr_app_response = self.create_application(tgt_engine_name, self.src_dummy_conn_app)
             src_dummy_conn_app_id = cr_app_response['applicationId']
 
             # Create dummy env to handle on the fly masking job/env
-            cr_env_response = self.create_environment(tgt_engine_name, src_dummy_conn_app_id, "src_dummy_conn_env", "MASK")
+            cr_env_response = self.create_environment(tgt_engine_name, src_dummy_conn_app_id, self.src_dummy_conn_env, "MASK")
             src_dummy_conn_env_id = cr_env_response['environmentId']
-
-            #             
-            syncobjapicall = "syncable-objects?page_number=1&object_type=ENVIRONMENT"
-            syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
+            print_debug("Source Env name = {}, Source Env purpose = {}, Source App name = {}, Source Env Id = {}, Source App Id = {}".format(self.src_dummy_conn_env, "MASK", self.src_dummy_conn_app,src_dummy_conn_env_id,src_dummy_conn_app_id))
+            print(" ")
+            #        
 
             for envobj in syncobjapicallresponse['responseList']:
                 
                 envdef = []
                 envdef.append(envobj)
+                print_debug("envobj: {}".format(envobj))
                 src_env_id = envobj['objectIdentifier']['id']
                 src_env_name = self.find_env_name(src_env_id, src_engine_name)
                 src_env_purpose = self.find_env_purpose(src_env_id, src_engine_name)
@@ -1072,19 +1100,22 @@ class aimasking():
                 print_debug("Target Env Id = {}, Target App Id = {}".format(tgt_env_id, tgt_app_id))
 
                 ## Create dummy app to handle on the fly masking job/env
-                #cr_app_response = self.create_application(tgt_engine_name, "src_dummy_conn_app")
+                #cr_app_response = self.create_application(tgt_engine_name, self.src_dummy_conn_app)
                 #src_dummy_conn_app_id = cr_app_response['applicationId']
                 #
                 ## Create dummy env to handle on the fly masking job/env
-                #cr_env_response = self.create_environment(tgt_engine_name, src_dummy_conn_app_id, "src_dummy_conn_env", src_env_purpose)
+                #cr_env_response = self.create_environment(tgt_engine_name, src_dummy_conn_app_id, self.src_dummy_conn_env, src_env_purpose)
                 #src_dummy_conn_env_id = cr_env_response['environmentId']
 
                 #tgtapicall = "import?force_overwrite=true&environment_id={}".format(tgt_env_id)
                 tgtapicall = "import?force_overwrite=true&environment_id={}&source_environment_id={}".format(tgt_env_id,src_dummy_conn_env_id)
-                tgtapiresponse = self.post_api_response1(tgt_engine_name, tgtapikey, tgtapicall, srcapiresponse, port=80)                
-                print(" Environment {} synced successfully. Please update password for connectors in this environment using GUI / API".format(src_env_name))
+                tgtapiresponse = self.post_api_response1(tgt_engine_name, tgtapikey, tgtapicall, srcapiresponse, port=80)
+                if tgtapiresponse is None:
+                     print(" Environment {} sync failed.".format(src_env_name))
+                else:            
+                    print(" Environment {} synced successfully. Please update password for connectors in this environment using GUI / API".format(src_env_name))
                 print(" ")
-            print(" Test Connectors on {} :".format(tgt_engine_name))
+            print(" ")
             self.test_dbconnectors(tgt_engine_name)
     
         else:
@@ -1108,11 +1139,20 @@ class aimasking():
         globalobjects_dir = os.path.join(bkp_main_dir, "globalobjects")
         self.cr_dir(globalobjects_dir) 
 
+        roleobjects_dir = os.path.join(bkp_main_dir, "roleobjects")
+        self.cr_dir(roleobjects_dir)
+
+        userobjects_dir = os.path.join(bkp_main_dir, "userobjects")
+        self.cr_dir(userobjects_dir)
+
         environments_dir = os.path.join(bkp_main_dir, "environments")
         self.cr_dir(environments_dir) 
 
         applications_dir = os.path.join(bkp_main_dir, "applications")
         self.cr_dir(applications_dir)
+
+        mappings_dir = os.path.join(bkp_main_dir, "mappings")
+        self.cr_dir(mappings_dir)
 
         print("Created directory structure for backups")
 
@@ -1123,7 +1163,7 @@ class aimasking():
         i = None
         srcapikey = self.get_auth_key(src_engine_name)
         if srcapikey is not None:
-            syncobjapicall = "syncable-objects?page_number=1&object_type={}".format(syncable_object_type)
+            syncobjapicall = "syncable-objects?page_number=1&page_size=999&object_type={}".format(syncable_object_type)
             syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
             for syncable_object_type_elem in syncobjapicallresponse['responseList']:
                 i = 1
@@ -1140,20 +1180,68 @@ class aimasking():
         else:
             print(" Error connecting source engine {}".format(src_engine_name))
 
+    def bkp_roles(self, bkp_main_dir):
+        src_engine_name = self.mskengname
+        i = None
+        srcapikey = self.get_auth_key(src_engine_name)
+        if srcapikey is not None:
+            roleobjapicall = "roles?page_number=1&page_size=999"
+            roleobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, roleobjapicall)
+            for role_rec in roleobjapicallresponse['responseList']:
+                i = 1
+                roleId = role_rec['roleId']
+                roleName = role_rec['roleName']                                   
+                roleNameNoSpace = roleName.replace(" ","_")
+                role_bkp_dict = { "roleId": roleId, "roleName": roleName, "srcapiresponse": role_rec }
+                roleobj_bkp_file = "{}/roleobjects/backup_{}.dat".format(bkp_main_dir,roleNameNoSpace)
+                with open(roleobj_bkp_file, 'wb') as fh:
+                    pickle.dump(role_bkp_dict, fh)
+                print("Created backup of role {}".format(roleName))   
+        else:
+            print(" Error connecting source engine {}".format(src_engine_name))
+
+    def bkp_users(self, bkp_main_dir):
+        src_engine_name = self.mskengname
+        i = None
+        srcapikey = self.get_auth_key(src_engine_name)
+        if srcapikey is not None:
+            userobjapicall = "users?page_number=1&page_size=999"
+            userobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, userobjapicall)
+            for user_rec in userobjapicallresponse['responseList']:
+                i = 1
+                userId = user_rec['userId']
+                userName = user_rec['userName']                                   
+                userNameNoSpace = userName.replace(" ", "_")
+                user_rec['password'] = "Delphix-123"
+                user_bkp_dict = { "userId": userId, "userName": userName, "srcapiresponse": user_rec }
+                userobj_bkp_file = "{}/userobjects/backup_{}.dat".format(bkp_main_dir,userNameNoSpace)
+                with open(userobj_bkp_file, 'wb') as fh:
+                    pickle.dump(user_bkp_dict, fh)
+                print("Created backup of user {}".format(userName))   
+        else:
+            print(" Error connecting source engine {}".format(src_engine_name))            
+
     def bkp_globalobj(self,bkp_main_dir):
         self.bkp_syncable_objects("GLOBAL_OBJECT",bkp_main_dir)
         self.bkp_syncable_objects("FILE_FORMAT",bkp_main_dir)
         self.bkp_syncable_objects("MOUNT_INFORMATION",bkp_main_dir)
         
     def offline_backup_eng(self):
+        env_mapping = {}
         src_engine_name = self.mskengname       
         srcapikey = self.get_auth_key(src_engine_name)
         print_debug("srcapikey={}".format(srcapikey))
         if srcapikey is not None:
             bkp_main_dir = self.cr_backup_dirs()
+            print(" ")
             self.bkp_globalobj(bkp_main_dir)
+            print(" ")
+            self.bkp_roles(bkp_main_dir)
+            print(" ")
+            self.bkp_users(bkp_main_dir)
+            print(" ")
 
-            syncobjapicall = "syncable-objects?page_number=1&object_type=ENVIRONMENT"
+            syncobjapicall = "syncable-objects?page_number=1&page_size=999&object_type=ENVIRONMENT"
             syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
             
             for envobj in syncobjapicallresponse['responseList']:
@@ -1167,6 +1255,8 @@ class aimasking():
                 src_app_name = self.find_app_name(src_app_id, src_engine_name)
                 print_debug("Source Env name = {}, Source Env purpose = {}, Source App name = {}, Source Env Id = {}, Source App Id = {}".format(src_env_name, src_env_purpose, src_app_name,src_env_id,src_app_id))
                 
+                env_mapping[src_env_id] = src_env_name
+
                 srcapicall = "export"
                 srcapiresponse = self.post_api_response1(src_engine_name, srcapikey, srcapicall, envdef, port=80)
                 
@@ -1175,6 +1265,15 @@ class aimasking():
                 with open(env_bkp_file, 'wb') as fh:
                     pickle.dump(env_bkp_dict, fh)
                 print("Created backup of environment {}".format(src_env_name))
+
+            env_mapping_file = "{}/mappings/backup_env_mapping.dat".format(bkp_main_dir)
+            with open(env_mapping_file, 'wb') as fh:
+                pickle.dump(env_mapping, fh)
+            print("Created mapping file for environment")
+            print(" ")
+
+            print("Created backup of masking engine at {}".format(bkp_main_dir))
+            print(" ")
     
         else:
             print (" Error connecting source engine {}".format(src_engine_name))
@@ -1185,11 +1284,41 @@ class aimasking():
         if tgtapiresponse is None:
             print(" Failed to restore Syncable Object {}".format(syncable_object_type))
         else:
-            print("Restored syncable_object_type: {}".format(syncable_object_type))
+            print(" Restored syncable_object_type: {}".format(syncable_object_type))
+
+    def restore_roleobj(self, roleName, tgtapikey, tgt_engine_name, srcapiresponse, bkp_main_dir):
+        tgtapicall = "roles"
+        tgtapiresponse = self.post_api_response1(tgt_engine_name, tgtapikey, tgtapicall, srcapiresponse, port=80)
+        if tgtapiresponse is None:
+            print(" Failed to restore role {}".format(roleName))
+        else:
+            print(" Restored role: {}".format(roleName))
+
+    def restore_userobj(self, userName, tgtapikey, tgt_engine_name, srcapiresponse, bkp_main_dir):
+        tgtapicall = "users"
+        tgtapiresponse = self.post_api_response1(tgt_engine_name, tgtapikey, tgtapicall, srcapiresponse, port=80)
+        if tgtapiresponse is None:
+            print(" Failed to restore user {}".format(userName))
+        else:
+            print_debug(" tgtapiresponse: {}".format(tgtapiresponse))
+            if 'errorMessage' in tgtapiresponse.keys():
+                if 'User already exists' in tgtapiresponse['errorMessage']:
+                    print_debug("User allready exists")
+                    userid = self.find_user_id(userName, tgt_engine_name)
+                    print_debug("userid = {}".format(userid))
+                    updtgtapicall = "users/{}".format(userid)
+                    tgtapiresponse = self.put_api_response(tgt_engine_name, tgtapikey, updtgtapicall, srcapiresponse, port=80)
+                    print_debug("put tgtapiresponse = {}".format(tgtapiresponse))
+                    print(" Restored user: {}".format(userName))
+                else:
+                    print("Unable to create user: {}".format(userName))
+            else:
+                print(" Restored user: {}".format(userName))
 
     def offline_restore_eng(self):
         tgt_engine_name = self.mskengname       
         tgtapikey = self.get_auth_key(tgt_engine_name)
+        
         print_debug("tgtapikey={}".format(tgtapikey))
         if tgtapikey is not None:
             backup_dir = self.backup_dir
@@ -1201,6 +1330,7 @@ class aimasking():
                 syncable_object_type = globalobj_bkp_dict['syncable_object_type']
                 srcapiresponse = globalobj_bkp_dict['srcapiresponse']
                 self.restore_globalobj(syncable_object_type, tgtapikey, tgt_engine_name, srcapiresponse, backup_dir)
+                print(" ")
 
             syncobj_bkp_dict_file_arr = os.listdir("{}/globalobjects".format(backup_dir))
             print_debug("syncobj_bkp_dict_file_arr: {}".format(syncobj_bkp_dict_file_arr))
@@ -1216,15 +1346,17 @@ class aimasking():
                     syncable_object_type = syncobj_bkp_dict['syncable_object_type']
                     srcapiresponse = syncobj_bkp_dict['srcapiresponse']
                     self.restore_globalobj(syncable_object_type, tgtapikey, tgt_engine_name, srcapiresponse, backup_dir)
-
+                    print(" ")
 
             # Create dummy app to handle on the fly masking job/env
-            cr_app_response = self.create_application(tgt_engine_name, "src_dummy_conn_app")
+            cr_app_response = self.create_application(tgt_engine_name, self.src_dummy_conn_app)
             src_dummy_conn_app_id = cr_app_response['applicationId']
 
             # Create dummy env to handle on the fly masking job/env
-            cr_env_response = self.create_environment(tgt_engine_name, src_dummy_conn_app_id, "src_dummy_conn_env", "MASK")
-            src_dummy_conn_env_id = cr_env_response['environmentId']
+            cr_env_response = self.create_environment(tgt_engine_name, src_dummy_conn_app_id, self.src_dummy_conn_env, "MASK")
+            src_dummy_conn_env_id = cr_env_response['environmentId']            
+
+            print_debug("Target Env Id = {}, Target App Id = {}".format(src_dummy_conn_app_id, src_dummy_conn_env_id))
 
             env_bkp_dict_file_arr = os.listdir("{}/environments".format(backup_dir))
             print_debug("env_bkp_dict_file_arr: {}".format(env_bkp_dict_file_arr))
@@ -1243,29 +1375,102 @@ class aimasking():
                 src_env_purpose = env_bkp_dict['src_env_purpose']
                 srcapiresponse = env_bkp_dict['srcapiresponse']
 
-                cr_app_response = self.create_application(tgt_engine_name, src_app_name)
-                tgt_app_id = cr_app_response['applicationId']
+                if src_env_name == self.src_dummy_conn_env:
+                    tgt_app_id = src_dummy_conn_app_id
+                    tgt_env_id = src_dummy_conn_env_id
+                else:
+                    cr_app_response = self.create_application(tgt_engine_name, src_app_name)
+                    tgt_app_id = cr_app_response['applicationId']
 
-                cr_env_response = self.create_environment(tgt_engine_name, tgt_app_id, src_env_name, src_env_purpose)
-                tgt_env_id = cr_env_response['environmentId']
+                    cr_env_response = self.create_environment(tgt_engine_name, tgt_app_id, src_env_name, src_env_purpose)
+                    tgt_env_id = cr_env_response['environmentId']
                 
                 print_debug("Target Env Id = {}, Target App Id = {}".format(tgt_env_id, tgt_app_id))
 
                 ## Create dummy app to handle on the fly masking job/env
-                #cr_app_response = self.create_application(tgt_engine_name, "src_dummy_conn_app")
+                #cr_app_response = self.create_application(tgt_engine_name, self.src_dummy_conn_app)
                 #src_dummy_conn_app_id = cr_app_response['applicationId']
-#
+                #
                 ## Create dummy app to handle on the fly masking job/env
-                #cr_env_response = self.create_environment(tgt_engine_name, src_dummy_conn_app_id, "src_dummy_conn_env", src_env_purpose)
+                #cr_env_response = self.create_environment(tgt_engine_name, src_dummy_conn_app_id, self.src_dummy_conn_env, src_env_purpose)
                 #src_dummy_conn_env_id = cr_env_response['environmentId']
 
-                tgtapicall = "import?force_overwrite=true&environment_id={}&source_environment_id={}".format(tgt_env_id,src_dummy_conn_env_id)
-                tgtapiresponse = self.post_api_response1(tgt_engine_name, tgtapikey, tgtapicall, srcapiresponse, port=80)                
-                print(" Environment {} synced successfully. Please update password for connectors in this environment using GUI / API".format(src_env_name))
+                if src_env_name == self.src_dummy_conn_env:
+                    # Handle eror : {"errorMessage":"Source environment cannot be the same as environment"}
+                    tgtapicall = "import?force_overwrite=true&environment_id={}".format(tgt_env_id)
+                else:
+                    tgtapicall = "import?force_overwrite=true&environment_id={}&source_environment_id={}".format(tgt_env_id, src_dummy_conn_env_id)
+
+                tgtapiresponse = self.post_api_response1(tgt_engine_name, tgtapikey, tgtapicall, srcapiresponse, port=80)
+                if tgtapiresponse is None:
+                    print(" Environment {} restore failed.".format(src_env_name))
+                else:            
+                    print(" Environment {} restored successfully. Please update password for connectors in this environment using GUI / API".format(src_env_name))
+
+                print(" Restored environment {}".format(env_bkp_dict['src_env_name']))
                 print(" ")
 
-                print("Restored environment {}".format(env_bkp_dict['src_env_name']))
-   
+            #Restore Roles
+            roleobj_bkp_dict_file_arr = os.listdir("{}/roleobjects".format(backup_dir))
+            print_debug("roleobj_bkp_dict_file_arr: {}".format(roleobj_bkp_dict_file_arr))
+            for roleobj_bkp_dict_file in roleobj_bkp_dict_file_arr:
+                if roleobj_bkp_dict_file != "backup_All_Privileges.dat":
+                    # All Privileges Role is default out of the box
+                    print_debug("roleobj_bkp_dict_file: {}".format(roleobj_bkp_dict_file))
+                    roleobj_bkp_dict_file_fullpath = "{}/{}/{}".format(backup_dir, "roleobjects", roleobj_bkp_dict_file)
+                    print_debug("roleobj_bkp_dict_file_fullpath: {}".format(roleobj_bkp_dict_file_fullpath))
+                    with open(roleobj_bkp_dict_file_fullpath, 'rb') as f1:
+                        roleobj_bkp_dict = pickle.load(f1)
+                    #print_debug(roleobj_bkp_dict) # It will be huge
+                    roleId = roleobj_bkp_dict['roleId']
+                    roleName = roleobj_bkp_dict['roleName']
+                    srcapiresponse = roleobj_bkp_dict['srcapiresponse']
+
+                    self.restore_roleobj(roleName, tgtapikey, tgt_engine_name, srcapiresponse, backup_dir)
+                    #print(" Restored Role {}".format(roleName))
+            print(" ")                
+
+            #Restore Users
+            env_mapping_file = "{}/mappings/backup_env_mapping.dat".format(backup_dir)
+            with open(env_mapping_file, 'rb') as m1:
+                env_mapping = pickle.load(m1)
+            print_debug(" Source Env Mapping :{}".format(env_mapping))
+            tgtenvlist = []
+            userobj_bkp_dict_file_arr = os.listdir("{}/userobjects".format(backup_dir))
+            print_debug("userobj_bkp_dict_file_arr: {}".format(userobj_bkp_dict_file_arr))
+            for userobj_bkp_dict_file in userobj_bkp_dict_file_arr:
+                if userobj_bkp_dict_file != "backup_admin.dat":
+                    # All Privileges user is default out of the box
+                    print_debug("userobj_bkp_dict_file: {}".format(userobj_bkp_dict_file))
+                    userobj_bkp_dict_file_fullpath = "{}/{}/{}".format(backup_dir, "userobjects", userobj_bkp_dict_file)
+                    print_debug("userobj_bkp_dict_file_fullpath: {}".format(userobj_bkp_dict_file_fullpath))
+                    with open(userobj_bkp_dict_file_fullpath, 'rb') as f1:
+                        userobj_bkp_dict = pickle.load(f1)
+                    #print_debug(userobj_bkp_dict) # It will be huge
+                    userId = userobj_bkp_dict['userId']
+                    userName = userobj_bkp_dict['userName']
+                    srcapiresponse = userobj_bkp_dict['srcapiresponse']
+                    print_debug(" Is Admin:{}".format(srcapiresponse['isAdmin']))
+                    if not srcapiresponse['isAdmin']:
+                        print_debug(" srcnonAdminProperties = {}".format(srcapiresponse['nonAdminProperties']))
+                        print_debug(" srcenvlist = {}".format(srcapiresponse['nonAdminProperties']['environmentIds']))
+                        srcenvlist = srcapiresponse['nonAdminProperties']['environmentIds']
+                        if len(srcenvlist) != 0:
+                            for envid in srcenvlist:
+                                tmpenvname = env_mapping[envid]
+                                tgtenvid = self.find_env_id(tmpenvname, tgt_engine_name)
+                                print_debug(" tgtenvid = {}".format(tgtenvid))
+                                tgtenvlist.append(tgtenvid)
+                        print_debug(" tgtenvlist = {}".format(tgtenvlist))
+                        print_debug(" Before : srcenvlist = {}".format(srcapiresponse['nonAdminProperties']['environmentIds']))
+                        srcapiresponse['nonAdminProperties']['environmentIds'] = tgtenvlist
+                        print_debug(" After  : srcenvlist = {}".format(srcapiresponse['nonAdminProperties']['environmentIds']))
+                    self.restore_userobj(userName, tgtapikey, tgt_engine_name, srcapiresponse, backup_dir)
+                    #print(" Restored user {}".format(userName))
+            print(" ")
+                    
+            print(" Restore Engine {} - complete".format(tgt_engine_name))
+            print(" ")
         else:
             print (" Error connecting source engine {}".format(tgt_engine_name))
 
@@ -1274,21 +1479,34 @@ class aimasking():
         srcapikey = self.get_auth_key(src_engine_name)
         print_debug("srcapikey={}".format(srcapikey))
         if srcapikey is not None:
-                           
-            syncobjapicall = "environments?page_number=1"
+            rerun_env_id_list = []  
+            syncobjapicall = "environments?page_number=1&page_size=999"
             syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
-
+            
             for envobj in syncobjapicallresponse['responseList']:
                 src_env_id = envobj['environmentId']
                 src_env_name = envobj['environmentName']
                 print_debug("srcenv = {},{}".format(src_env_id,src_env_name))
 
                 delapicall = "environments/{}".format(src_env_id)
-                delapiresponse = self.del_api_response(src_engine_name, srcapikey, delapicall)              
-                print(" Environment {} deleted successfully.".format(src_env_name))
-                print(" ")
+                delapiresponse = self.del_api_response(src_engine_name, srcapikey, delapicall)
+                if delapiresponse is None:
+                    # To Handle dependents especially on-the-fly-masking interdependent env
+                    rerun_env_id_list.append({"src_env_id": src_env_id, "src_env_name": src_env_name})
+                else:             
+                    print(" Environment {} deleted successfully.".format(src_env_name))
+                    #print(" ")
+
+            if len(rerun_env_id_list) != 0:
+                for rerun_env_id_rec in rerun_env_id_list:
+                    src_env_id = rerun_env_id_rec['src_env_id']
+                    src_env_name = rerun_env_id_rec['src_env_name']
+                    delapicall = "environments/{}".format(src_env_id)
+                    delapiresponse = self.del_api_response(src_engine_name, srcapikey, delapicall)
+                    print(" Environment {} deleted successfully.".format(src_env_name))
+                    #print(" ")
     
-            syncobjapicall = "applications?page_number=1"
+            syncobjapicall = "applications?page_number=1&page_size=999"
             syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
             for appobj in syncobjapicallresponse['responseList']:
                 src_app_id = appobj['applicationId']
@@ -1298,7 +1516,7 @@ class aimasking():
                 delapicall = "applications/{}".format(src_app_id)
                 delapiresponse = self.del_api_response(src_engine_name, srcapikey, delapicall)              
                 print(" Application {} deleted successfully.".format(src_app_name))
-                print(" ")
+                #print(" ")
 
             print(" Engine {} cleanup completed.".format(src_engine_name))
             print(" ")            
@@ -1333,13 +1551,14 @@ class aimasking():
         return apiresponse     
 
     def test_dbconnectors(self, src_engine_name):
+        print(" TEST CONNECTORS ON MASKING ENGINE: {}".format(src_engine_name))
         if src_engine_name is None:
             src_engine_name = self.mskengname       
         srcapikey = self.get_auth_key(src_engine_name)
         print_debug("srcapikey={}".format(srcapikey))
         if srcapikey is not None:
             print(" Test Database Connectors:")
-            syncobjapicall = "database-connectors?page_number=1"
+            syncobjapicall = "database-connectors?page_number=1&page_size=999"
             syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
             print_debug(syncobjapicallresponse)
             for connobj in syncobjapicallresponse['responseList']:
@@ -1356,13 +1575,14 @@ class aimasking():
                     apiresponse = self.post_api_response(src_engine_name, srcapikey, testapicall, payload, port=80)
                     print_debug("apiresponse= {}".format(apiresponse))
                     if apiresponse['response'] == "Connection Succeeded":
-                        print(" Env : {:20}, Connector : {:15} --> {}.".format(src_conn_envname,src_conn_name,apiresponse['response']))
+                        print(" Env : {:35}, Connector : {:25} --> {}.".format(src_conn_envname,src_conn_name,apiresponse['response']))
                     else:
-                        print(" Env : {:20}, Connector : {:15} --> {}.".format(src_conn_envname,src_conn_name,"Connection Failed"))
+                        print(" Env : {:35}, Connector : {:25} --> {}.".format(src_conn_envname,src_conn_name,"Connection Failed"))
+            
             print(" ")
-
+            
             print(" Test File Connectors:")
-            syncobjapicall = "file-connectors?page_number=1"
+            syncobjapicall = "file-connectors?page_number=1&page_size=999"
             syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
             print_debug(syncobjapicallresponse)
             for connobj in syncobjapicallresponse['responseList']:
@@ -1380,15 +1600,14 @@ class aimasking():
                     apiresponse = self.post_api_response(src_engine_name, srcapikey, testapicall, payload, port=80)
                     print_debug("apiresponse= {}".format(apiresponse))
                     if apiresponse['response'] == "Connection Succeeded":
-                        print(" Env : {:20}, Connector : {:15} --> {}.".format(src_conn_envname,src_conn_name,apiresponse['response']))
+                        print(" Env : {:35}, Connector : {:25} --> {}.".format(src_conn_envname,src_conn_name,apiresponse['response']))
                     else:
-                        print(" Env : {:20}, Connector : {:15} --> {}.".format(src_conn_envname,src_conn_name,"Connection Failed"))
+                        print(" Env : {:35}, Connector : {:25} --> {}.".format(src_conn_envname,src_conn_name,"Connection Failed"))
 
             print(" ")
-            print(" ")
-            print(" Below functionality is under development. Please ignore any errors......")
             print(" Test Mainframe Connectors:")
-            syncobjapicall = "mainframe-dataset-connectors?page_number=1"
+            print(" Below functionality is under development. Please ignore any errors......")            
+            syncobjapicall = "mainframe-dataset-connectors?page_number=1&page_size=999"
             syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
             print_debug(syncobjapicallresponse)
             for connobj in syncobjapicallresponse['responseList']:
@@ -1405,9 +1624,9 @@ class aimasking():
                     apiresponse = self.post_api_response(src_engine_name, srcapikey, testapicall, payload, port=80)
                     print_debug("apiresponse= {}".format(apiresponse))
                     if apiresponse['response'] == "Connection Succeeded":
-                        print(" Env : {:20}, Connector : {:15} --> {}.".format(src_conn_envname,src_conn_name,apiresponse['response']))
+                        print(" Env : {:35}, Connector : {:25} --> {}.".format(src_conn_envname,src_conn_name,apiresponse['response']))
                     else:
-                        print(" Env : {:20}, Connector : {:15} --> {}.".format(src_conn_envname,src_conn_name,"Connection Failed"))
+                        print(" Env : {:35}, Connector : {:25} --> {}.".format(src_conn_envname,src_conn_name,"Connection Failed"))
 
             print(" ")
             
@@ -1429,7 +1648,7 @@ class aimasking():
         srcapikey = self.get_auth_key(src_engine_name)        
         if srcapikey is not None:
             if globalobjsync:
-                syncobjapicall = "syncable-objects?page_number=1&object_type=GLOBAL_OBJECT"
+                syncobjapicall = "syncable-objects?page_number=1&page_size=999&object_type=GLOBAL_OBJECT"
                 syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
                 for globalobj in syncobjapicallresponse['responseList']:
                     if globalobj['objectIdentifier']['id'] == "global":
@@ -1446,7 +1665,7 @@ class aimasking():
                         else:
                             print(" Global Objects synced successfully.")
                             
-            syncobjapicall = "syncable-objects?page_number=1&object_type=MASKING_JOB"
+            syncobjapicall = "syncable-objects?page_number=1&page_size=999&object_type=MASKING_JOB"
             syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
             for jobobj in syncobjapicallresponse['responseList']:
                 if jobobj['objectIdentifier']['id'] == src_job_id:
@@ -1471,11 +1690,11 @@ class aimasking():
         apikey = self.get_auth_key(engine_name)
         i = 0
         if apikey is not None:
-            apicall = "environments?page_number=1"
+            apicall = "environments?page_number=1&page_size=999"
             envlist_response = self.get_api_response(engine_name, apikey, apicall)
             for envname in envlist_response['responseList']:
                 if envname['environmentName'] == paramenvname:
-                    jobapicall = "masking-jobs?page_number=1&environment_id={}".format(envname['environmentId'])
+                    jobapicall = "masking-jobs?page_number=1&page_size=999&environment_id={}".format(envname['environmentId'])
                     joblist_response = self.get_api_response(engine_name, apikey, jobapicall)
                     joblist_responselist = joblist_response['responseList']
                     for joblist in joblist_responselist:
@@ -1492,7 +1711,7 @@ class aimasking():
         apikey = self.get_auth_key(engine_name)
         i = 0
         if apikey is not None:
-            apicall = "environments?page_number=1"
+            apicall = "environments?page_number=1&page_size=999"
             envlist_response = self.get_api_response(engine_name, apikey, apicall)
             for envname in envlist_response['responseList']:
                 if envname['environmentName'] == paramenvname:
@@ -1536,7 +1755,7 @@ class aimasking():
         apikey = self.get_auth_key(engine_name)
         i = 0
         if apikey is not None:
-            apicall = "applications?page_number=1"
+            apicall = "applications?page_number=1&page_size=999"
             applist_response = self.get_api_response(engine_name, apikey, apicall)
             for appname in applist_response['responseList']:
                 if appname['applicationName'] == paramappname:
@@ -1557,6 +1776,20 @@ class aimasking():
             return applist_response['applicationName']
         else:
             print("Error connecting engine {}".format(engine_name))
+
+    def find_user_id(self, paramusername, engine_name):
+        apikey = self.get_auth_key(engine_name)
+        if apikey is not None:
+            apicall = "users"
+            userlist_response = self.get_api_response(engine_name, apikey, apicall)
+            print_debug("userlist_response = {}".format(userlist_response))
+            for user_rec in userlist_response['responseList']:
+                print_debug("user_rec = {}".format(user_rec))
+                if user_rec['userName'] == paramusername:
+                    return user_rec['userId']
+        else:
+            print("Error connecting engine {}".format(engine_name))
+            return 0
 
 
     # @track
