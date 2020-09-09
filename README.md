@@ -75,11 +75,14 @@ Masking AI Agent is built using python 3.x. It helps to
 ```
 
 ##### Backup Engine
+```shell
 ./mskaiagnt offline-backup-eng --mskengname atmskengine02 --backup_dir /home/ubuntu/WSL/test --username admin --password xxxxxx --protocol http
+```
 
 ##### Restore Engine
+```shell
 ./mskaiagnt offline-restore-eng --mskengname atmskengine02 --backup_dir /home/ubuntu/WSL/test/MMDDYYYY_HH24MISS --username admin --password xxxxxx --protocol http
-
+```
 
 ### <a id="contribute"></a>How to Contribute
 
