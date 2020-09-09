@@ -2177,21 +2177,20 @@ class aimasking():
             print(" Error connecting source engine {}".format(engine_name))
        
     # @track
-    def list_green_eng(self):
-        if self.config.debug:
-            print_debug("Parameter List:")
-            print_debug("  username = {}".format(self.username))
-        
+    def list_eng_usage(self):
         if not self.mock:
             # Run this if its not mock run for demos
             self.pull_jobexeclist()
         engine_list = self.create_dictobj(self.enginelistfile)
-        job_list = self.create_dictobj(self.joblistfile)
         jobexec_list = self.create_dictobj(self.jobexeclistfile)
         enginecpu_list = self.create_dictobj(self.enginecpulistfile)
 
+        self.add_debugspace()
+        print_debug("enginecpu_list:{}".format(enginecpu_list))
+        self.add_debugspace()
+
         engine_list = self.create_dictobj(self.enginelistfile)
-        print_debug("engine_list:\n{}".format(engine_list))
+        print_debug("engine_list:{}".format(engine_list))
 
         enginelist = []
         for engine in engine_list:
@@ -2199,12 +2198,14 @@ class aimasking():
                                                        totalmb=int(engine['totalgb']) * 1024,
                                                        systemmb=int(engine['systemgb']) * 1024)
             enginelist.append(engine_list_dict)
-        print_debug("engine_list:\n{}".format(engine_list))
-        print_debug("enginelist:\n{}".format(enginelist))
+        print_debug("engine_list:{}".format(engine_list))
+        print_debug("enginelist:{}".format(enginelist))
         engine_list = enginelist
 
+        engine_pool_for_job = engine_list
+        print_debug("engine_pool_for_job:{}".format(engine_pool_for_job))
+
         bannertext = banner()
-        print(" ")
 
         if self.config.verbose or self.config.debug:
             print((colored(bannertext.banner_sl_box(text="Available Engine Pool:"), 'yellow')))
@@ -2218,9 +2219,9 @@ class aimasking():
             for ind in enginecpu_list:
                 print('{0:>1}{1:<35}{2:>20}'.format(" ", ind['ip_address'], ind['cpu']))
 
-        print_debug('jobexec_list = \n{}'.format(jobexec_list))
+        print_debug('jobexec_list = {}'.format(jobexec_list))
         engineusage = self.group_job_mem_usage('ip_address', 'jobmaxmemory', jobexec_list)
-        print_debug('engineusage = \n{}'.format(engineusage))
+        print_debug('engineusage = {}'.format(engineusage))
         if engineusage is None:
             print_debug("Creating empty list.")
             engineusage_od = []
@@ -2244,9 +2245,9 @@ class aimasking():
                         i = 1
                 if i == 0:
                     temporddict = collections.OrderedDict(ip_address=ind['ip_address'], totalusedmemory=0)
-                    engineusage_od.append(temporddict)                
+                    engineusage_od.append(temporddict)
 
-        print_debug('engineusage_od = \n{}'.format(engineusage_od))
+        print_debug('engineusage_od = {}'.format(engineusage_od))
 
         if self.config.verbose or self.config.debug:
             print((colored(bannertext.banner_sl_box(text="Memory Usage:"), 'yellow')))
@@ -2260,6 +2261,9 @@ class aimasking():
 
         if len(enginecpu_list) != 0:
             engineusage = self.join_dict(engineusage_od, enginecpu_list, 'ip_address', 'cpu')
+            self.add_debugspace()
+            print_debug("engineusage:{}".format(engineusage))
+            self.add_debugspace()
             if self.config.verbose or self.config.debug:
                 for ind in engineusage:
                     print('{0:>1}{1:<35}{2:>20}{3:>20}'.format(" ", ind['ip_address'], ind['totalusedmemory'],
@@ -2267,7 +2271,9 @@ class aimasking():
         else:
             print("Handle this situation")
 
+        self.add_debugspace()
+        print_debug("enginecpu_list:{}".format(enginecpu_list))
+        self.add_debugspace()
         print_debug('engineusage_od = \n{}\n'.format(engineusage_od))
         print_debug('enginecpu_list = \n{}\n'.format(enginecpu_list))
         print_debug('engineusage = \n{}\n'.format(engineusage))
-

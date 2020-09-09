@@ -17,7 +17,7 @@ Masking AI Agent is built using python 3.x. It helps to
 ./mskaiagnt list-engine
 ```
 
-##### Add real dcenter engines
+##### Add engines to pool
 ```shell
 ./mskaiagnt add-engine -m atmskengine01 -t 64 -s 10
 ./mskaiagnt add-engine -m atmskengine02 -t 64 -s 10
@@ -83,6 +83,12 @@ Masking AI Agent is built using python 3.x. It helps to
 ```shell
 ./mskaiagnt offline-restore-eng --mskengname atmskengine02 --backup_dir /home/ubuntu/WSL/test/MMDDYYYY_HH24MISS --username admin --password xxxxxx --protocol http
 ```
+
+##### List Engine Usage
+```shell
+./mskaiagnt.py -v list-eng-usage --username admin --password xxxxxx --protocol http --dxtoolkit_path /home/ubuntu/WSL/dxtoolkit2
+```
+
 
 ### <a id="contribute"></a>How to Contribute
 

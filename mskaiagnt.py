@@ -509,10 +509,14 @@ def run_job(config, jobname, envname, run, mock, username, password, protocol,dx
                        help='Masking mskaiagnt username to connect masking engines')              
 @click.password_option('--password', '-p', default='mskenv',
                        help='Masking mskaiagnt password to connect masking engines')
+@click.option('--mock', '-m', default=False, is_flag=True,
+              help='Mock run - just for demos')
 @click.option('--protocol', default='http', prompt='Enter protocol http|https to access Masking Engines',
-              help='http protocol')                       
+              help='http protocol')
+@click.option('--dxtoolkit_path', default='', prompt='Enter dxtoolkit path',
+              help='dxtoolkit full path')
 @pass_config
-def list_green_eng(config, username, password, protocol):
+def list_eng_usage(config, username, password, protocol,mock,dxtoolkit_path):
     """ This module will find green engines"""
 
     print_banner()
@@ -522,8 +526,10 @@ def list_green_eng(config, username, password, protocol):
 
     if config.verbose:
         print_debug('Verbose mode enabled')
+        print_debug('mock     = {0}'.format(mock))
         print_debug('username = {0}'.format(username))
         print_debug('protocol      = {0}'.format(protocol))
+        print_debug('dxtoolkit_path = {0}'.format(dxtoolkit_path))
 
     globals.arguments['--debug'] = config.debug
     globals.arguments['--config'] = './dxtools.conf'
@@ -534,21 +540,36 @@ def list_green_eng(config, username, password, protocol):
     globals.arguments['--poll'] = '10'
     globals.arguments['--version'] = False
     globals.arguments['--single_thread'] = True
+    globals.arguments['--dxtoolkit_path'] = dxtoolkit_path
 
     try:
+        mskai = aimasking(config, mock=mock, username=username, password=password, protocol=protocol)
+        if not mock:
+            mskai.pull_jobexeclist()
+
+    except Exception as e:
+        print("Error in MSK module")
+        print(str(e))
+        return
+
+    try:
+        print_debug(" ")
         print_debug("Capture CPU usage data...")
         scriptdir = os.path.dirname(os.path.abspath(__file__))
         outputdir = os.path.join(scriptdir, 'output')
-        aive = virtualization(config, config_file_path='./dxtools.conf', scriptdir=scriptdir, outputdir=outputdir, protocol=protocol)
+        print_debug("dxtoolkit_path: {}".format(dxtoolkit_path))
+        aive = virtualization(config, config_file_path='./dxtools.conf', scriptdir=scriptdir, outputdir=outputdir, protocol=protocol, dxtoolkit_path=dxtoolkit_path)
+        print_debug("dxtoolkit_path: {}".format(dxtoolkit_path))
         aive.gen_cpu_file()
         print_debug("Capture CPU usage data : done")
+        print_debug(" ")
     except:
         print("Error in VE module")
         return
 
     try:
-        mskai = aimasking(config, username=username, password=password, protocol=protocol)
-        mskai.list_green_eng()
+        mskai = aimasking(config, mock=mock, username=username, password=password, protocol=protocol)
+        mskai.list_eng_usage()
     except Exception as e:
         print("Error in MSK module")
         print(str(e))

@@ -172,7 +172,7 @@ class virtualization():
                         f = open(self.enginecpulistfile, "a")
                         f.write("{},{}\n".format(engine, cpuvalue))
                         f.close()
-                        print("Engine {} : pulled cpu data - OK".format(engine))
+                        print_debug("Engine {} : pulled cpu data - OK".format(engine))
                     else:
                         print("Engine {} : Unable to pull cpu data".format(engine))
                         f = open(self.enginecpulistfile, "a")
