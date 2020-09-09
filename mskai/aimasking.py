@@ -17,7 +17,6 @@ from mskai.DxLogging import print_debug
 from mskai.banner import banner
 
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
-
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 class dotdict(dict):
@@ -97,7 +96,6 @@ class aimasking():
             if self.config.debug:
                 print_debug("Created directory {}".format(self.outputdir))
         
-
     def create_dictobj(self, filename):
         with open(filename, 'r') as read_obj:
             reader = DictReader(read_obj)
@@ -146,7 +144,6 @@ class aimasking():
         filtereddatafinal1 = filter(lambda row: (myjobname == row['jobname'] and myenvname == row['environmentname']),mydictname)
         filtereddataQ = filtereddatafinal1
         return list(filtereddataQ)
-    
 
     def join_dict1(self, dict1, dict2, fieldname):
         answer = {}
@@ -289,7 +286,7 @@ class aimasking():
                                                                engine['systemgb']))
                 print(" ")
             else:
-                print("No Engine found in pool".format(self.mskengname))
+                print("No Engine found in pool")
         except Exception as e:
             print_debug(str(e))
             print_debug("Not able to open file {}".format(self.enginelistfile))
@@ -374,6 +371,7 @@ class aimasking():
             return data
         else:
             print_debug(response.content.decode('utf-8'))
+            print(response.content.decode('utf-8'))
             return None
 
     def post_api_response(self, ip_address, api_token, apicall, body, port=80):
@@ -984,72 +982,63 @@ class aimasking():
         else:
             print(" Error connecting source engine {}".format(src_engine_name))
 
-    def call_sync_env(self):
-        src_engine_name = self.srcmskengname
-        tgt_engine_name = self.tgtmskengname
-        src_env_name = self.srcenvname
-        tgt_env_name = self.tgtenvname
-        globalobjsync = self.globalobjsync
-
-        if globalobjsync:
-            self.sync_globalobj()
-
-        src_env_id = self.find_env_id(src_env_name, src_engine_name)
-        src_env_purpose = self.find_env_purpose(src_env_name, src_engine_name)
-        src_app_id = self.find_appid_of_envid(src_env_id, src_engine_name)
-        src_app_name = self.find_app_name(src_app_id, src_engine_name)
-
-        tgtapikey = self.get_auth_key(tgt_engine_name)
-        cr_app_response = self.create_application(tgt_engine_name, src_app_name)
-        tgt_app_id = cr_app_response['applicationId']
-
-        cr_env_response = self.create_environment(tgt_engine_name, tgt_app_id, tgt_env_name, src_env_purpose)
-        tgt_env_id = cr_env_response['environmentId']
-
-        print_debug(" Source Env Id = {}".format(src_env_id))
-        print_debug(" Target App Id = {}".format(tgt_app_id))
-        print_debug(" Target Env Id = {}".format(tgt_env_id))
-        self.sync_env(src_engine_name,tgt_engine_name,src_env_name,tgt_env_name)
-
-    def sync_env(self,src_engine_name,tgt_engine_name,src_env_name,tgt_env_name):
-
-        src_env_id = self.find_env_id(src_env_name, src_engine_name)
-        tgt_env_id = self.find_env_id(tgt_env_name, tgt_engine_name)
-
+    def process_sync_job(self,src_engine_name,tgt_engine_name,globalobjsync,src_env_name,tgt_env_name,jobname):
 
         srcapikey = self.get_auth_key(src_engine_name)
-        if srcapikey is not None:
-            syncobjapicall = "syncable-objects?page_number=1&page_size=999&object_type=ENVIRONMENT"
+        print_debug("srcapikey={}".format(srcapikey))
+
+        tgtapikey = self.get_auth_key(tgt_engine_name)
+        print_debug("tgtapikey={}".format(tgtapikey))
+
+        if srcapikey is not None and tgtapikey is not None:
+            src_job_id = self.find_job_id(jobname, src_env_name, src_engine_name)
+
+            if globalobjsync:
+                self.sync_globalobj()                 
+     
+            # Create dummy app to handle on the fly masking job/env
+            cr_app_response = self.create_application(tgt_engine_name, self.src_dummy_conn_app)
+            src_dummy_conn_app_id = cr_app_response['applicationId']
+
+            # Create dummy env to handle on the fly masking job/env
+            cr_env_response = self.create_environment(tgt_engine_name, src_dummy_conn_app_id, self.src_dummy_conn_env, "MASK")
+            src_dummy_conn_env_id = cr_env_response['environmentId']
+
+            print_debug("Source Env name = {}, Source Env purpose = {}, Source App name = {}, Source Env Id = {}, Source App Id = {}".format(self.src_dummy_conn_env, "MASK", self.src_dummy_conn_app,src_dummy_conn_env_id,src_dummy_conn_app_id))
+            print(" ")
+            #        
+
+            syncobjapicall = "syncable-objects?page_number=1&page_size=999&object_type=MASKING_JOB"
             syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
-            for envobj in syncobjapicallresponse['responseList']:
-                if envobj['objectIdentifier']['id'] == src_env_id:
-                    envdef = []
-                    envdef.append(envobj)                                        
+            for jobobj in syncobjapicallresponse['responseList']:
+                curr_job_id = jobobj['objectIdentifier']['id']
+                if curr_job_id == src_job_id:
+                    jobdef = []
+                    jobdef.append(jobobj)
+                    print_debug("jobobj: {}".format(jobobj))
+                    src_env_id = self.find_env_id(src_env_name, src_engine_name)
+                    src_env_purpose = self.find_env_purpose(src_env_id, src_engine_name)
+                    src_app_id = self.find_appid_of_envid(src_env_id, src_engine_name)
+                    src_app_name = self.find_app_name(src_app_id, src_engine_name)
+                    print_debug("Source Env name = {}, Source Env purpose = {}, Source App name = {}, Source Env Id = {}, Source App Id = {}".format(src_env_name, src_env_purpose, src_app_name,src_env_id,src_app_id))
                     srcapicall = "export"
-                    srcapiresponse = self.post_api_response1(src_engine_name, srcapikey, srcapicall, envdef, port=80)
-                    
-                    tgtapikey = self.get_auth_key(tgt_engine_name)
-
-                    # Create dummy app to handle on the fly masking job/env
-                    cr_app_response = self.create_application(tgt_engine_name, self.src_dummy_conn_app)
-                    src_dummy_conn_app_id = cr_app_response['applicationId']
-
-                    cr_env_response = self.create_environment(tgt_engine_name, tgt_app_id, self.src_dummy_conn_env, src_env_purpose)
-                    src_dummy_conn_env_id = cr_env_response['environmentId']
-
-                    #tgtapicall = "import?force_overwrite=true&environment_id={}".format(tgt_env_id)
+                    srcapiresponse = self.post_api_response1(src_engine_name, srcapikey, srcapicall, jobdef, port=80)
+                   
+                    tgt_env_id = self.find_env_id(tgt_env_name, tgt_engine_name)
                     tgtapicall = "import?force_overwrite=true&environment_id={}&source_environment_id={}".format(tgt_env_id,src_dummy_conn_env_id)
-                    tgtapiresponse = self.post_api_response1(tgt_engine_name, tgtapikey, tgtapicall, srcapiresponse, port=80)                
-                    print(" Environment synced successfully. Please update password for connectors in this environment using GUI / API")
+                    tgtapiresponse = self.post_api_response1(tgt_engine_name, tgtapikey, tgtapicall, srcapiresponse, port=80)
+                    if tgtapiresponse is None:
+                         print(" Job {} sync failed.".format(jobname))
+                    else:            
+                        print(" Job {} synced successfully. Please update password for connectors in this environment using GUI / API".format(jobname))
+                    print(" ")
+            #print(" ")
     
         else:
-            print (" Error connecting source engine {}".format(src_engine_name))
+            print(" Error connecting source engine {}".format(src_engine_name))
+            
+    def process_sync_env(self,src_engine_name,tgt_engine_name,globalobjsync,src_env_name,tgt_env_name,sync_scope):
 
-    def sync_eng(self):
-        src_engine_name = self.srcmskengname
-        tgt_engine_name = self.tgtmskengname          
-        globalobjsync = self.globalobjsync
-        globalobjsync = True
         srcapikey = self.get_auth_key(src_engine_name)
         print_debug("srcapikey={}".format(srcapikey))
 
@@ -1058,10 +1047,26 @@ class aimasking():
 
         if srcapikey is not None and tgtapikey is not None:
             if globalobjsync:
-                self.sync_globalobj()                    
-     
-            syncobjapicall = "syncable-objects?page_number=1&page_size=999&object_type=ENVIRONMENT"
-            syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
+                self.sync_globalobj()
+
+            if sync_scope == "ENV":
+                try:
+                    src_env_id = self.find_env_id(src_env_name, src_engine_name)
+                except:
+                    sys.exit(
+                        "Error: Unable to pull source env id for environment {}. Please check engine and environment name".format(
+                            src_env_name))
+
+                try:
+                    tgt_env_id = self.find_env_id(tgt_env_name, tgt_engine_name)
+                    if tgt_env_id is None:
+                        print(" Agent will create new environment {}".format(tgt_env_name))
+                        print(" ")
+                except:
+                    print(
+                        "Error: Unable to pull target env id for environment {}. Please check engine and environment name".format(
+                            tgt_env_name))
+
 
             # Create dummy app to handle on the fly masking job/env
             cr_app_response = self.create_application(tgt_engine_name, self.src_dummy_conn_app)
@@ -1070,62 +1075,231 @@ class aimasking():
             # Create dummy env to handle on the fly masking job/env
             cr_env_response = self.create_environment(tgt_engine_name, src_dummy_conn_app_id, self.src_dummy_conn_env, "MASK")
             src_dummy_conn_env_id = cr_env_response['environmentId']
+
             print_debug("Source Env name = {}, Source Env purpose = {}, Source App name = {}, Source Env Id = {}, Source App Id = {}".format(self.src_dummy_conn_env, "MASK", self.src_dummy_conn_app,src_dummy_conn_env_id,src_dummy_conn_app_id))
             print(" ")
             #        
 
+            syncobjapicall = "syncable-objects?page_number=1&page_size=999&object_type=ENVIRONMENT"
+            syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
             for envobj in syncobjapicallresponse['responseList']:
-                
-                envdef = []
-                envdef.append(envobj)
-                print_debug("envobj: {}".format(envobj))
-                src_env_id = envobj['objectIdentifier']['id']
-                src_env_name = self.find_env_name(src_env_id, src_engine_name)
-                src_env_purpose = self.find_env_purpose(src_env_id, src_engine_name)
-                src_app_id = self.find_appid_of_envid(src_env_id, src_engine_name)
-                src_app_name = self.find_app_name(src_app_id, src_engine_name)
-                print_debug("Source Env name = {}, Source Env purpose = {}, Source App name = {}, Source Env Id = {}, Source App Id = {}".format(src_env_name, src_env_purpose, src_app_name,src_env_id,src_app_id))
-                srcapicall = "export"
-                #print_debug(src_engine_name, srcapikey, srcapicall, envdef, port=80)
-                srcapiresponse = self.post_api_response1(src_engine_name, srcapikey, srcapicall, envdef, port=80)
-                #print_debug("srcapiresponse={}".format(srcapiresponse))
+                curr_env_id = envobj['objectIdentifier']['id']
+                if sync_scope == "ENGINE":
+                    src_env_id = curr_env_id
 
-                # Create dummy app to handle on the fly masking job/env
-                cr_app_response = self.create_application(tgt_engine_name, src_app_name)
-                tgt_app_id = cr_app_response['applicationId']
+                if curr_env_id == src_env_id:
+                    envdef = []
+                    envdef.append(envobj)
+                    print_debug("envobj: {}".format(envobj))
+                    #src_env_id = envobj['objectIdentifier']['id']
+                    src_env_name = self.find_env_name(src_env_id, src_engine_name)
+                    src_env_purpose = self.find_env_purpose(src_env_id, src_engine_name)
+                    src_app_id = self.find_appid_of_envid(src_env_id, src_engine_name)
+                    src_app_name = self.find_app_name(src_app_id, src_engine_name)
+                    print_debug("Source Env name = {}, Source Env purpose = {}, Source App name = {}, Source Env Id = {}, Source App Id = {}".format(src_env_name, src_env_purpose, src_app_name,src_env_id,src_app_id))
+                    srcapicall = "export"
+                    #print_debug(src_engine_name, srcapikey, srcapicall, envdef, port=80)
+                    srcapiresponse = self.post_api_response1(src_engine_name, srcapikey, srcapicall, envdef, port=80)
+                    #print_debug("srcapiresponse={}".format(srcapiresponse))
 
-                cr_env_response = self.create_environment(tgt_engine_name, tgt_app_id, src_env_name, src_env_purpose)
-                tgt_env_id = cr_env_response['environmentId']
-                
-                print_debug("Target Env Id = {}, Target App Id = {}".format(tgt_env_id, tgt_app_id))
+                    cr_app_response = self.create_application(tgt_engine_name, src_app_name)
+                    tgt_app_id = cr_app_response['applicationId']
 
-                ## Create dummy app to handle on the fly masking job/env
-                #cr_app_response = self.create_application(tgt_engine_name, self.src_dummy_conn_app)
-                #src_dummy_conn_app_id = cr_app_response['applicationId']
-                #
-                ## Create dummy env to handle on the fly masking job/env
-                #cr_env_response = self.create_environment(tgt_engine_name, src_dummy_conn_app_id, self.src_dummy_conn_env, src_env_purpose)
-                #src_dummy_conn_env_id = cr_env_response['environmentId']
+                    cr_env_response = self.create_environment(tgt_engine_name, tgt_app_id, src_env_name, src_env_purpose)
+                    tgt_env_id = cr_env_response['environmentId']
+                    
+                    print_debug("Target Env Id = {}, Target App Id = {}".format(tgt_env_id, tgt_app_id))
 
-                #tgtapicall = "import?force_overwrite=true&environment_id={}".format(tgt_env_id)
-                tgtapicall = "import?force_overwrite=true&environment_id={}&source_environment_id={}".format(tgt_env_id,src_dummy_conn_env_id)
-                tgtapiresponse = self.post_api_response1(tgt_engine_name, tgtapikey, tgtapicall, srcapiresponse, port=80)
-                if tgtapiresponse is None:
-                     print(" Environment {} sync failed.".format(src_env_name))
-                else:            
-                    print(" Environment {} synced successfully. Please update password for connectors in this environment using GUI / API".format(src_env_name))
-                print(" ")
-            print(" ")
-            self.test_dbconnectors(tgt_engine_name)
-    
+                    tgtapicall = "import?force_overwrite=true&environment_id={}&source_environment_id={}".format(tgt_env_id,src_dummy_conn_env_id)
+                    tgtapiresponse = self.post_api_response1(tgt_engine_name, tgtapikey, tgtapicall, srcapiresponse, port=80)
+                    if tgtapiresponse is None:
+                         print(" Environment {} sync failed.".format(src_env_name))
+                    else:            
+                        print(" Environment {} synced successfully. Please update password for connectors in this environment using GUI / API".format(src_env_name))
+                    print(" ")
+
+                    if sync_scope == "ENV":
+                        break
+            #print(" ")
         else:
-            print (" Error connecting source engine {}".format(src_engine_name))
+            print (" Error connecting source engine {}".format(src_engine_name))    
+    
+    def sync_env(self):
+        src_engine_name = self.srcmskengname
+        tgt_engine_name = self.tgtmskengname
+        globalobjsync = self.globalobjsync
+        src_env_name = self.srcenvname
+        tgt_env_name = self.tgtenvname
+        sync_scope = "ENV"
+        self.process_sync_env(src_engine_name, tgt_engine_name, globalobjsync, src_env_name, tgt_env_name, sync_scope)
+
+        print(" Adjust Source Connector for OTF jobs(if any)")
+        print_debug(" {},{},{},{}".format(src_engine_name, tgt_engine_name, src_env_name, tgt_env_name))
+        del_tmp_env = self.upd_all_otf_jobs_src_connectors(src_engine_name, tgt_engine_name, src_env_name, tgt_env_name, sync_scope)
+        print_debug(" del_tmp_env = {}".format(del_tmp_env))
+        print(" ")
+
+        if del_tmp_env == 0:
+            print(" Delete temporary environment {} created for OTF jobs".format(self.src_dummy_conn_env))
+            dummy_conn_env_id = self.find_env_id(self.src_dummy_conn_env, tgt_engine_name)
+            self.del_env_byid(tgt_engine_name, dummy_conn_env_id, None)
+
+            print(" ")
+            print(" Delete temporary application {} created for OTF jobs".format(self.src_dummy_conn_app))
+            dummy_conn_app_id = self.find_app_id(self.src_dummy_conn_app, tgt_engine_name)
+            self.del_app_byid(tgt_engine_name, dummy_conn_app_id, None)
+            print(" ")
+
+        conn_type_list = ["database", "file", "mainframe"]
+        for conn_type in conn_type_list:
+            self.test_connectors(tgt_engine_name, conn_type, sync_scope, tgt_env_name)        
+    
+    def sync_eng(self):
+        src_engine_name = self.srcmskengname
+        tgt_engine_name = self.tgtmskengname          
+        globalobjsync = self.globalobjsync
+        globalobjsync = True
+        sync_scope = "ENGINE"
+        self.process_sync_env(src_engine_name, tgt_engine_name, globalobjsync, None, None, sync_scope)
+
+        print(" Adjust Source Connector for OTF jobs(if any)")
+        src_env_name = None
+        tgt_env_name = None
+        print_debug(" {},{},{},{}".format(src_engine_name, tgt_engine_name, src_env_name, tgt_env_name))
+        del_tmp_env = self.upd_all_otf_jobs_src_connectors(src_engine_name, tgt_engine_name, src_env_name, tgt_env_name,
+                                                           sync_scope,None)
+        print_debug( " del_tmp_env = {}".format(del_tmp_env))
+        print(" ")
+
+        if del_tmp_env == 0:
+            print(" Delete temporary environment {} created for OTF jobs".format(self.src_dummy_conn_env))
+            dummy_conn_env_id = self.find_env_id(self.src_dummy_conn_env, tgt_engine_name)
+            self.del_env_byid(tgt_engine_name, dummy_conn_env_id, None)
+
+            print(" ")
+            print(" Delete temporary application {} created for OTF jobs".format(self.src_dummy_conn_app))
+            dummy_conn_app_id = self.find_app_id(self.src_dummy_conn_app, tgt_engine_name)
+            self.del_app_byid(tgt_engine_name, dummy_conn_app_id, None)
+            print(" ")
+
+        conn_type_list = ["database", "file", "mainframe"]
+        for conn_type in conn_type_list:
+            self.test_connectors(tgt_engine_name, conn_type, sync_scope, None)
+
+    def sync_job(self):
+        src_engine_name = self.srcmskengname
+        tgt_engine_name = self.tgtmskengname
+        src_env_name = self.srcenvname
+        tgt_env_name = self.tgtenvname
+        src_job_name = self.srcjobname
+        globalobjsync = self.globalobjsync
+        sync_scope = "JOB"
+        self.process_sync_job(src_engine_name, tgt_engine_name, globalobjsync, src_env_name, tgt_env_name, src_job_name)
+
+        print(" Adjust Source Connector for OTF jobs(if any)")
+        print_debug(" {},{},{},{}".format(src_engine_name, tgt_engine_name, src_env_name, tgt_env_name))
+        del_tmp_env = self.upd_all_otf_jobs_src_connectors(src_engine_name, tgt_engine_name, src_env_name, tgt_env_name, sync_scope, src_job_name)
+        print(" ")
+
+        if del_tmp_env == 0:
+            print(" Delete temporary environment {} created for OTF jobs".format(self.src_dummy_conn_env))
+            dummy_conn_env_id = self.find_env_id(self.src_dummy_conn_env, tgt_engine_name)
+            self.del_env_byid(tgt_engine_name, dummy_conn_env_id, None)
+
+            print(" ")
+            print(" Delete temporary application {} created for OTF jobs".format(self.src_dummy_conn_app))
+            dummy_conn_app_id = self.find_app_id(self.src_dummy_conn_app, tgt_engine_name)
+            self.del_app_byid(tgt_engine_name, dummy_conn_app_id, None)
+            print(" ")
+
+        conn_type_list = ["database", "file", "mainframe"]
+        for conn_type in conn_type_list:
+            self.test_connectors(tgt_engine_name, conn_type, sync_scope, tgt_env_name)
+
+
+    def upd_all_otf_jobs_src_connectors(self, src_engine_name, tgt_engine_name, src_env_name, tgt_env_name, sync_scope, jobname=None):
+        delete_tmp_env = 0
+        is_otf_job = 0
+        srcapikey = self.get_auth_key(src_engine_name)
+        print_debug("srcapikey={}".format(srcapikey))
+
+        tgtapikey = self.get_auth_key(tgt_engine_name)
+        print_debug("tgtapikey={}".format(tgtapikey))
+
+        if sync_scope == "ENV" or sync_scope == "JOB":
+            try:
+                src_env_id = self.find_env_id(src_env_name, src_engine_name)
+            except:
+                sys.exit(
+                    "Error: Unable to pull source env id for environment {}. Please check engine and environment name".format(
+                        src_env_name))
+
+            try:
+                tgt_env_id = self.find_env_id(tgt_env_name, tgt_engine_name)
+            except:
+                print(
+                    "Error: Unable to pull target env id for environment {}. Please check engine and environment name".format(
+                        tgt_env_name))
+
+        if srcapikey is not None and tgtapikey is not None:
+            syncobjapicall = "environments?page_number=1&page_size=999"
+            syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
+            for envobj in syncobjapicallresponse['responseList']:
+                curr_env_id = envobj['environmentId']
+                curr_env_name = envobj['environmentName']
+
+                if sync_scope == "ENGINE":
+                    src_env_id = curr_env_id
+                    src_env_name = curr_env_name
+                    tgt_env_name = curr_env_name
+
+                print_debug(
+                    "upd_all_otf_jobs_src_connectors - src_env_id={},curr_env_id={}".format(src_env_id, curr_env_id))
+
+                if curr_env_id == src_env_id:
+                    print_debug("Before otf_src_job_mappings - jobname = {}".format(jobname))
+                    otf_src_job_mappings = self.gen_otf_job_mappings(src_engine_name,src_env_name,sync_scope,jobname)
+                    otf_tgt_job_mappings = self.gen_otf_job_mappings(tgt_engine_name,tgt_env_name,sync_scope,jobname)
+                    print_debug(" otf_src_job_mappings : {}".format(otf_src_job_mappings))
+                    print_debug(" otf_tgt_job_mappings : {}".format(otf_tgt_job_mappings))
+
+                    #print(" ")
+                    for i in otf_tgt_job_mappings:
+                        is_otf_job = 1
+                        upd_job_name = i['jobname']
+                        print(' Updating Job {} on Environment {} for source connector'.format(upd_job_name, tgt_env_name))
+                        src_record = self.find_conn_details(otf_src_job_mappings, upd_job_name, src_env_name)
+                        tgt_record = self.find_conn_details(otf_tgt_job_mappings, upd_job_name, tgt_env_name)
+
+                        print_debug(" src:{}".format(src_record))
+                        print_debug(" tgt:{}".format(tgt_record))
+
+                        maskingJobId = tgt_record['maskingJobId']
+                        srcconnectorName = src_record['srcconnectorName']
+                        srcconnectorType = src_record['srcconnectorType']
+                        srcconnectorEnvName = src_record['srcconnectorEnvName']
+                        srcconnectorEnvappname = src_record['srcconnectorEnvappname']
+                        tgtenvironmentId = tgt_record['environmentId']
+
+                        print_debug(" {},{},{},{},{},{},{}".format(maskingJobId, srcconnectorName, srcconnectorType, srcconnectorEnvName, tgt_engine_name, tgt_env_name,srcconnectorEnvappname))
+                        return_status = self.upd_job_connector(maskingJobId, srcconnectorName, srcconnectorType, srcconnectorEnvName, tgt_engine_name, tgt_env_name,srcconnectorEnvappname)
+                        if return_status == 1:
+                            delete_tmp_env = 1
+                    if sync_scope == "ENV":
+                        if is_otf_job == 0:
+                            delete_tmp_env = 1
+                        elif is_otf_job == 1 and delete_tmp_env == 1:
+                            delete_tmp_env = 1
+                        elif is_otf_job == 1 and delete_tmp_env == 0:
+                            delete_tmp_env = 0
+                        break
+        return delete_tmp_env
 
     def cr_dir(self,dirname):
         if not os.path.exists(dirname):
             try:
                 os.makedirs(dirname)
-            except Exception as e:
+            except:
                 print("Unable to create directory {}. Please check permissions".format(dirname)) 
 
     def cr_backup_dirs(self):
@@ -1160,13 +1334,11 @@ class aimasking():
 
     def bkp_syncable_objects(self, syncable_object_type, bkp_main_dir):
         src_engine_name = self.mskengname
-        i = None
         srcapikey = self.get_auth_key(src_engine_name)
         if srcapikey is not None:
             syncobjapicall = "syncable-objects?page_number=1&page_size=999&object_type={}".format(syncable_object_type)
             syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
             for syncable_object_type_elem in syncobjapicallresponse['responseList']:
-                i = 1
                 syncable_object_type_def = []
                 syncable_object_type_def.append(syncable_object_type_elem)                                        
                 srcapicall = "export"
@@ -1478,6 +1650,7 @@ class aimasking():
         src_engine_name = self.mskengname       
         srcapikey = self.get_auth_key(src_engine_name)
         print_debug("srcapikey={}".format(srcapikey))
+        i = 0
         if srcapikey is not None:
             rerun_env_id_list = []  
             syncobjapicall = "environments?page_number=1&page_size=999"
@@ -1503,7 +1676,11 @@ class aimasking():
                     src_env_name = rerun_env_id_rec['src_env_name']
                     delapicall = "environments/{}".format(src_env_id)
                     delapiresponse = self.del_api_response(src_engine_name, srcapikey, delapicall)
-                    print(" Environment {} deleted successfully.".format(src_env_name))
+                    if delapiresponse is None:
+                        print(" Unable to delete environment {}.".format(src_env_name))
+                        i = 1
+                    else:
+                        print(" Environment {} deleted successfully.".format(src_env_name))
                     #print(" ")
     
             syncobjapicall = "applications?page_number=1&page_size=999"
@@ -1514,16 +1691,115 @@ class aimasking():
                 print_debug("srcapp = {},{}".format(src_app_id,src_app_name))
 
                 delapicall = "applications/{}".format(src_app_id)
-                delapiresponse = self.del_api_response(src_engine_name, srcapikey, delapicall)              
-                print(" Application {} deleted successfully.".format(src_app_name))
-                #print(" ")
+                delapiresponse = self.del_api_response(src_engine_name, srcapikey, delapicall)
+                if delapiresponse is None:
+                    print(" Unable to delete Application {}.".format(src_app_name))
+                    i = 1
+                else:
+                    print(" Application {} deleted successfully.".format(src_app_name))
+                    #print(" ")
 
-            print(" Engine {} cleanup completed.".format(src_engine_name))
+            print(" ")
+            print(" Deleting users")
+            self.del_users(src_engine_name,srcapikey)
+            print(" ")
+            print(" Deleting roles")
+            self.del_roles(src_engine_name,srcapikey)
+            print(" ")
+            print(" Deleting Domains")
+            self.del_domains(src_engine_name,srcapikey)
+
+            if i == 0:
+                print(" Engine {} cleanup completed.".format(src_engine_name))
+            else:
+                print(" Engine {} cleanup failed.".format(src_engine_name))
             print(" ")            
 
         else:
             print(" Error connecting source engine {}".format(src_engine_name))
+               
+    def gen_otf_job_mappings(self, src_engine_name,src_env_name,sync_scope=None,jobname=None):
+        otf_job_mapping_list = []
+        
+        srcapikey = self.get_auth_key(src_engine_name)
+        print_debug("srcapikey={}".format(srcapikey))
+        if srcapikey is not None:
+
+            envid = self.find_env_id(src_env_name, src_engine_name)
+            syncobjapicall = "environments?page_number=1&page_size=999"
+            syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
             
+            for envobj in syncobjapicallresponse['responseList']:
+                #otf_job_dict = {}
+                src_env_id = envobj['environmentId']
+                src_env_name = envobj['environmentName']
+                src_env_purpose = envobj['purpose']
+                
+                if envid == src_env_id:
+                    jobobjapicall = "masking-jobs?page_number=1&page_size=999&environment_id={}".format(src_env_id)
+                    jobobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, jobobjapicall)
+
+                    for jobobj in jobobjapicallresponse['responseList']:
+                        print_debug(" ")
+                        otf_job_dict = {}
+                        print_debug("{},{},{},{}".format(jobobj['maskingJobId'], jobobj['jobName'], src_env_name, jobobj['onTheFlyMasking']))
+                        if jobobj['onTheFlyMasking']:
+                            otf_jobid = jobobj['maskingJobId']
+                            otf_jobname = jobobj['jobName']
+                            if sync_scope != 'JOB':
+                                jobname = otf_jobname
+                            print_debug("otf_jobname={},jobname={},sync_scope={}".format(otf_jobname,jobname,sync_scope))
+                            if otf_jobname ==  jobname:
+                                print_debug(
+                                    "Matched : otf_jobname={},jobname={},sync_scope={}".format(otf_jobname, jobname, sync_scope))
+                                #otf_job_dict = {}
+
+                                srcconnectorId = jobobj['onTheFlyMaskingSource']['connectorId']
+                                srcconnectortype = jobobj['onTheFlyMaskingSource']['connectorType']
+                                srcconnectorenvId = self.find_env_id_by_conn_id(srcconnectorId, srcconnectortype, src_engine_name, srcapikey)
+                                srcconnectorName = self.find_conn_name_by_conn_id(srcconnectorId, srcconnectortype, src_engine_name, srcapikey)
+                                srcconnectorEnvname = self.find_env_name(srcconnectorenvId, src_engine_name)
+                                srcconnectorEnvappid = self.find_appid_of_envid(srcconnectorenvId, src_engine_name)
+                                srcconnectorEnvappname = self.find_app_name(srcconnectorEnvappid,src_engine_name)
+
+                                otf_job_details_dict = {}
+                                otf_job_details_dict['maskingJobId'] = jobobj['maskingJobId']
+                                otf_job_details_dict['environmentId'] = src_env_id
+                                otf_job_details_dict['envname'] = src_env_name
+                                #otf_job_details_dict['purpose'] = src_env_purpose
+                                otf_job_details_dict['srcconnectorId'] = srcconnectorId
+                                otf_job_details_dict['srcconnectorName'] = srcconnectorName
+                                otf_job_details_dict['srcconnectorType'] = jobobj['onTheFlyMaskingSource']['connectorType'].lower()
+                                otf_job_details_dict['srcconnectorEnvId'] = srcconnectorenvId
+                                otf_job_details_dict['srcconnectorEnvName'] = srcconnectorEnvname
+                                otf_job_details_dict['srcconnectorEnvappname'] = srcconnectorEnvappname
+                                print_debug("otf_job_details_dict = {}".format(otf_job_details_dict))
+                                print_debug(" ")
+
+                                otf_jobenv_mapping_dict = {}
+                                otf_jobenv_mapping_dict[src_env_name] = otf_job_details_dict
+                                print_debug("otf_jobenv_mapping_dict = {}".format(otf_jobenv_mapping_dict))
+                                print_debug(" ")
+
+                                otf_job_dict[otf_jobid] = otf_jobname
+                                otf_job_dict[otf_jobname] = otf_jobenv_mapping_dict
+                                otf_job_dict['jobname'] = otf_jobname
+
+                                print_debug("otf_job_dict = {}".format(otf_job_dict))
+                                print_debug(" ")
+
+                                otf_job_mapping_list.append(otf_job_dict)
+                                print_debug("otf_job_mapping_list = {}".format(otf_job_mapping_list))
+                                print_debug("==========================================================")
+                                print_debug(" ")
+                
+            print_debug(" ")
+            print_debug(" ")
+            print_debug("JobMapping: {}".format(otf_job_mapping_list))
+            return otf_job_mapping_list
+        else:
+            print (" Error connecting source engine {}".format(src_engine_name))
+
     def create_application(self,engine_name,app_name):
         apikey = self.get_auth_key(engine_name)
         apicall = "applications"
@@ -1549,142 +1825,6 @@ class aimasking():
         else:
             print(" Environment {} Created Successfully".format(env_name))
         return apiresponse     
-
-    def test_dbconnectors(self, src_engine_name):
-        print(" TEST CONNECTORS ON MASKING ENGINE: {}".format(src_engine_name))
-        if src_engine_name is None:
-            src_engine_name = self.mskengname       
-        srcapikey = self.get_auth_key(src_engine_name)
-        print_debug("srcapikey={}".format(srcapikey))
-        if srcapikey is not None:
-            print(" Test Database Connectors:")
-            syncobjapicall = "database-connectors?page_number=1&page_size=999"
-            syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
-            print_debug(syncobjapicallresponse)
-            for connobj in syncobjapicallresponse['responseList']:
-                print_debug(connobj)                
-                src_conn_id = connobj["databaseConnectorId"]
-                src_conn_envid = connobj["environmentId"]
-                src_conn_name = connobj["connectorName"]
-                src_conn_envname = self.find_env_name(src_conn_envid, src_engine_name)                
-                
-                testapicall = "database-connectors/{}/test".format(src_conn_id)
-                payload = connobj
-                print_debug("payload={}".format(payload))
-                if src_conn_name not in ["MF_CN1"]:
-                    apiresponse = self.post_api_response(src_engine_name, srcapikey, testapicall, payload, port=80)
-                    print_debug("apiresponse= {}".format(apiresponse))
-                    if apiresponse['response'] == "Connection Succeeded":
-                        print(" Env : {:35}, Connector : {:25} --> {}.".format(src_conn_envname,src_conn_name,apiresponse['response']))
-                    else:
-                        print(" Env : {:35}, Connector : {:25} --> {}.".format(src_conn_envname,src_conn_name,"Connection Failed"))
-            
-            print(" ")
-            
-            print(" Test File Connectors:")
-            syncobjapicall = "file-connectors?page_number=1&page_size=999"
-            syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
-            print_debug(syncobjapicallresponse)
-            for connobj in syncobjapicallresponse['responseList']:
-                #print_debug("====================================================================================================")
-                print_debug(connobj)                
-                src_conn_id = connobj["fileConnectorId"]
-                src_conn_envid = connobj["environmentId"]
-                src_conn_name = connobj["connectorName"]
-                src_conn_envname = self.find_env_name(src_conn_envid, src_engine_name)                
-                
-                testapicall = "file-connectors/{}/test".format(src_conn_id)
-                payload = connobj
-                print_debug("payload={}".format(payload))
-                if src_conn_name not in ["MF_CN1"]:
-                    apiresponse = self.post_api_response(src_engine_name, srcapikey, testapicall, payload, port=80)
-                    print_debug("apiresponse= {}".format(apiresponse))
-                    if apiresponse['response'] == "Connection Succeeded":
-                        print(" Env : {:35}, Connector : {:25} --> {}.".format(src_conn_envname,src_conn_name,apiresponse['response']))
-                    else:
-                        print(" Env : {:35}, Connector : {:25} --> {}.".format(src_conn_envname,src_conn_name,"Connection Failed"))
-
-            print(" ")
-            print(" Test Mainframe Connectors:")
-            print(" Below functionality is under development. Please ignore any errors......")            
-            syncobjapicall = "mainframe-dataset-connectors?page_number=1&page_size=999"
-            syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
-            print_debug(syncobjapicallresponse)
-            for connobj in syncobjapicallresponse['responseList']:
-                print_debug(connobj)                
-                src_conn_id = connobj["mainframe-datasetConnectorId"]
-                src_conn_envid = connobj["environmentId"]
-                src_conn_name = connobj["connectorName"]
-                src_conn_envname = self.find_env_name(src_conn_envid, src_engine_name)                
-                
-                testapicall = "mainframe-dataset-connectors/{}/test".format(src_conn_id)
-                payload = connobj
-                print_debug("payload={}".format(payload))
-                if src_conn_name not in ["MF_CN1"]:
-                    apiresponse = self.post_api_response(src_engine_name, srcapikey, testapicall, payload, port=80)
-                    print_debug("apiresponse= {}".format(apiresponse))
-                    if apiresponse['response'] == "Connection Succeeded":
-                        print(" Env : {:35}, Connector : {:25} --> {}.".format(src_conn_envname,src_conn_name,apiresponse['response']))
-                    else:
-                        print(" Env : {:35}, Connector : {:25} --> {}.".format(src_conn_envname,src_conn_name,"Connection Failed"))
-
-            print(" ")
-            
-        else:
-            print(" Error connecting source engine {}".format(src_engine_name))
-
-    def sync_job(self):
-        src_engine_name = self.srcmskengname
-        tgt_engine_name = self.tgtmskengname
-        src_env_name = self.srcenvname
-        tgt_env_name = self.tgtenvname
-        src_job_name = self.srcjobname
-        src_env_id = self.find_env_id(src_env_name, src_engine_name)
-        tgt_env_id = self.find_env_id(tgt_env_name, tgt_engine_name)
-        src_job_id = self.find_job_id(src_job_name, src_env_name, src_engine_name)
-        globalobjsync = self.globalobjsync
-        print_debug("Src Env Id = {}, Tgt Env Id = {},Src Job Id = {}".format(src_env_id,tgt_env_id,src_job_id))
-        
-        srcapikey = self.get_auth_key(src_engine_name)        
-        if srcapikey is not None:
-            if globalobjsync:
-                syncobjapicall = "syncable-objects?page_number=1&page_size=999&object_type=GLOBAL_OBJECT"
-                syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
-                for globalobj in syncobjapicallresponse['responseList']:
-                    if globalobj['objectIdentifier']['id'] == "global":
-                        globalobjdef = []
-                        globalobjdef.append(globalobj)                                        
-                        srcapicall = "export"
-                        srcapiresponse = self.post_api_response1(src_engine_name, srcapikey, srcapicall, globalobjdef, port=80)
-                        
-                        tgtapikey = self.get_auth_key(tgt_engine_name)
-                        tgtapicall = "import?force_overwrite=true"
-                        tgtapiresponse = self.post_api_response1(tgt_engine_name, tgtapikey, tgtapicall, srcapiresponse, port=80)
-                        if tgtapiresponse is None:
-                            print(" Global Objects synced failed.")
-                        else:
-                            print(" Global Objects synced successfully.")
-                            
-            syncobjapicall = "syncable-objects?page_number=1&page_size=999&object_type=MASKING_JOB"
-            syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
-            for jobobj in syncobjapicallresponse['responseList']:
-                if jobobj['objectIdentifier']['id'] == src_job_id:
-                    
-                    envdef = []
-                    envdef.append(jobobj)                                        
-                    srcapicall = "export"
-                    srcapiresponse = self.post_api_response1(src_engine_name, srcapikey, srcapicall, envdef, port=80)
-                    
-                    tgtapikey = self.get_auth_key(tgt_engine_name)
-                    tgtapicall = "import?force_overwrite=true&environment_id={}".format(tgt_env_id)
-                    #print(tgtapikey)
-                    #print(tgtapicall)
-                    tgtapiresponse = self.post_api_response1(tgt_engine_name, tgtapikey, tgtapicall, srcapiresponse, port=80)                
-                    #print(tgtapiresponse)
-                    print(" Job synced successfully. Please update password for connectors of this job using GUI")
-
-        else:
-            print ("Error connecting source engine {}".format(src_engine_name))
 
     def find_job_id(self, jobname, paramenvname, engine_name):
         apikey = self.get_auth_key(engine_name)
@@ -1719,7 +1859,8 @@ class aimasking():
                     #print_debug("env id = {}".format(envname['environmentId']))
                     return envname['environmentId']
             if i == 0:
-                print("Error unable to find env id for environment {}".format(paramenvname))
+                print(" Error: unable to find env id for environment {}".format(paramenvname))
+                return None
         else:
             print("Error connecting engine {}".format(engine_name))
 
@@ -1773,9 +1914,76 @@ class aimasking():
         if apikey is not None:
             apicall = "applications/{}".format(paramappid)
             applist_response = self.get_api_response(engine_name, apikey, apicall)
-            return applist_response['applicationName']
+            try:
+                return applist_response['applicationName']
+            except:
+                return None
         else:
             print("Error connecting engine {}".format(engine_name))
+
+    def find_env_id_by_conn_id(self, paramconnid, paramconntype, engine_name, srcapikey):
+        apikey = srcapikey
+        i = 0
+        if apikey is not None:
+            if paramconntype == "DATABASE":
+                apicall = "database-connectors/{}".format(paramconnid)
+            elif paramconntype == "FILE":
+                apicall = "file-connectors/{}".format(paramconnid)
+
+            try:
+                conn_response = self.get_api_response(engine_name, apikey, apicall)
+                env_id = conn_response['environmentId']
+                return env_id
+
+            except Exception as e:
+                print(" Error unable to find env id for connector id {}".format(paramconnid))
+                return None
+        else:
+            print("Error connecting engine {}".format(engine_name))
+
+    def find_conn_name_by_conn_id(self, paramconnid, paramconntype, engine_name, srcapikey):
+        apikey = srcapikey
+        i = 0
+        if apikey is not None:
+            if paramconntype == "DATABASE":
+                apicall = "database-connectors/{}".format(paramconnid)
+            elif paramconntype == "FILE":
+                apicall = "file-connectors/{}".format(paramconnid)
+
+            try:
+                conn_response = self.get_api_response(engine_name, apikey, apicall)
+                conn_name = conn_response['connectorName']
+                return conn_name
+
+            except Exception as e:
+                print(" Error unable to find connector Name for connector id {}".format(paramconnid))
+                return None
+        else:
+            print("Error connecting engine {}".format(engine_name))
+
+    def find_connid_by_name(self, paramconnname, paramconntype, engine_name, srcapikey, src_env_id):
+        apikey = srcapikey
+        print_debug("{},{},{},{}".format(paramconnname, paramconntype, engine_name, src_env_id))
+        print_debug("apikey={}".format(apikey))
+        try:
+            syncobjapicall = "{}-connectors?page_number=1&page_size=999&environment_id={}".format(paramconntype, src_env_id)
+            print_debug("syncobjapicall: {}".format(syncobjapicall))
+            syncobjapicallresponse = self.get_api_response(engine_name, apikey, syncobjapicall)
+            #print("syncobjapicallresponse: {}".format(syncobjapicallresponse))
+            print_debug(syncobjapicallresponse)
+            for connobj in syncobjapicallresponse['responseList']:                
+                print_debug(connobj)    
+                conn_id = connobj["databaseConnectorId"]
+                conn_name = connobj["connectorName"]
+                print_debug("conn_name:{},paramconnname:{},conn_id:{}".format(conn_name,paramconnname,conn_id))
+                if conn_name == paramconnname:
+                    print_debug("conn_id:{},paramconnname:{}".format(conn_id,paramconnname))
+                    return conn_id           
+                    
+        except Exception as e:
+            print("   Unable to pull {} connector data".format(paramconntype))
+            print_debug(e)        
+        #print(" ")            
 
     def find_user_id(self, paramusername, engine_name):
         apikey = self.get_auth_key(engine_name)
@@ -1791,7 +1999,183 @@ class aimasking():
             print("Error connecting engine {}".format(engine_name))
             return 0
 
+    def upd_job_connector(self, jobid, srcconn_name, conn_type, src_env_name, engine_name, tgt_env_name,srcconnectorEnvappname):
+        return_status = 1
+        apikey = self.get_auth_key(engine_name)
+        print_debug("src_env_name = {}".format(src_env_name))
+        print_debug("tgt_env_name = {}".format(tgt_env_name))
+        src_env_id = self.find_env_id(src_env_name, engine_name)
+        if src_env_id is None:
+            print(" Source environment {} does not exists on masking engine {}. Please sync {} env for OTF jobs".format(src_env_name,engine_name,src_env_name))
+            print(" Please sync environment {} first for syncing OTF jobs".format(src_env_name))
+            print(" ")
+            return_status = 1
+            return return_status
 
+            # Below can create ap and env but connector will still be missing.
+            #cr_app_response = self.create_application(engine_name,srcconnectorEnvappname)
+            #src_conn_app_id = cr_app_response['applicationId']
+            #cr_env_response = self.create_environment(engine_name,src_conn_app_id,src_env_name)
+            #src_env_id = cr_env_response['environmentId']
+
+        print_debug("src_env_id on target engine = {}".format(src_env_id))
+
+        newconnid = self.find_connid_by_name(srcconn_name, conn_type, engine_name, apikey, src_env_id)
+        print_debug("newconnid = {}".format(newconnid))
+        if apikey is not None:
+            apicall = "masking-jobs/{}?page_number=1&page_size=999".format(jobid)
+            print_debug("apicall: {}".format(apicall))
+            mskjob_response = self.get_api_response(engine_name, apikey, apicall)
+            print_debug("mskjob_response: {}".format(mskjob_response))
+            mskjob_response['onTheFlyMaskingSource']['connectorId'] = newconnid
+            print_debug("mskjob_response: {}".format(mskjob_response))
+
+            res = self.put_api_response(engine_name, apikey, apicall, mskjob_response, port=80)
+            print_debug("res: {}".format(res))
+            print(" Job update complete")
+            return_status = 0
+            return return_status
+        else:
+            return_status = 1
+            return return_status
+
+    def del_env_byid(self, engine_name, env_id, apikey):
+        if apikey is None:
+            apikey = self.get_auth_key(engine_name)
+        env_name = self.find_env_name(env_id,engine_name)
+        delapicall = "environments/{}".format(env_id)
+        delapiresponse = self.del_api_response(engine_name, apikey, delapicall)
+        if delapiresponse is None:
+            print(" Unable to delete environment {}".format(env_name))
+        else:
+            print(" Environment {} deleted successfully.".format(env_name))
+
+    def del_app_byid(self, engine_name, app_id, apikey):
+        if apikey is None:
+            apikey = self.get_auth_key(engine_name)
+        app_name = self.find_app_name(app_id,engine_name)
+        delapicall = "applications/{}".format(app_id)
+        delapiresponse = self.del_api_response(engine_name, apikey, delapicall)
+        if delapiresponse is None:
+            print(" Unable to delete application {}".format(app_name))
+        else:
+            print(" Application {} deleted successfully.".format(app_name))
+
+    def del_users(self,src_engine_name,srcapikey):
+        if srcapikey is None:
+            self.get_auth_key(src_engine_name)
+        syncobjapicall = "users?page_number=1&page_size=999"
+        syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
+        for userobj in syncobjapicallresponse['responseList']:
+            src_user_id = userobj['userId']
+            src_user_name = userobj['userName']
+            print_debug("User = {},{}".format(src_user_id, src_user_name))
+            if src_user_name != 'admin':
+                delapicall = "users/{}".format(src_user_id)
+                delapiresponse = self.del_api_response(src_engine_name, srcapikey, delapicall)
+                if delapiresponse is None:
+                    print(" Unable to delete User {}.".format(src_user_name))
+                    i = 1
+                else:
+                    print(" User {} deleted successfully.".format(src_user_name))
+                    # print(" ")
+
+    def del_roles(self,src_engine_name,srcapikey):
+        if srcapikey is None:
+            self.get_auth_key(src_engine_name)
+        syncobjapicall = "roles?page_number=1&page_size=999"
+        syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
+        for roleobj in syncobjapicallresponse['responseList']:
+            src_role_id = roleobj['roleId']
+            src_role_name = roleobj['roleName']
+            print_debug("Role = {},{}".format(src_role_id, src_role_name))
+            if src_role_name != "All Privileges":
+                delapicall = "roles/{}".format(src_role_id)
+                delapiresponse = self.del_api_response(src_engine_name, srcapikey, delapicall)
+                if delapiresponse is None:
+                    print(" Unable to delete Role {}.".format(src_role_name))
+                    i = 1
+                else:
+                    print(" Role {} deleted successfully.".format(src_role_name))
+                    # print(" ")
+
+    def del_domains(self,src_engine_name,srcapikey):
+        if srcapikey is None:
+            self.get_auth_key(src_engine_name)
+        syncobjapicall = "domains?page_number=1&page_size=999"
+        syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
+        for domainobj in syncobjapicallresponse['responseList']:
+            src_domain_name = domainobj['domainName']
+            print_debug("Domain = {}".format(src_domain_name))
+            if src_domain_name not in ["LISTOFSYSTEMDOMAINS"]:
+                delapicall = "domains/{}".format(src_domain_name)
+                delapiresponse = self.del_api_response(src_engine_name, srcapikey, delapicall)
+                if delapiresponse is None:
+                    print(" Unable to delete Domain {}.".format(src_domain_name))
+                    i = 1
+                else:
+                    print(" Domain {} deleted successfully.".format(src_domain_name))
+                    # print(" ")
+
+    def find_conn_details(self,otf_job_mappings,job_name,env_name):
+        #print(" ")
+        print_debug("{} {}".format(job_name,env_name))
+        for jobrec in otf_job_mappings:      
+            if job_name in jobrec.keys():
+                env_rec = jobrec[job_name]
+                if env_name in env_rec.keys():
+                    print_debug("Match found")                
+                    detail_rec = env_rec[env_name]
+                    return detail_rec
+
+    def test_connectors(self, engine_name, conn_type, test_scope, envname = None ):
+        print(" TEST CONNECTORS ON MASKING ENGINE: {}".format(engine_name))   
+        apikey = self.get_auth_key(engine_name)
+        print_debug("apikey={}".format(apikey))
+        if test_scope == "ENV":
+            envid = self.find_env_id(envname, engine_name)
+        
+        if apikey is not None:
+            print(" Test {} Connectors:".format(conn_type))
+            try:
+                syncobjapicall = "{}-connectors?page_number=1&page_size=999".format(conn_type)
+                syncobjapicallresponse = self.get_api_response(engine_name, apikey, syncobjapicall)
+                print_debug(syncobjapicallresponse)
+                for connobj in syncobjapicallresponse['responseList']:                
+                    print_debug(connobj)    
+                    conn_envid = connobj["environmentId"]
+                    if test_scope == "ENGINE":
+                        tgt_envid = conn_envid
+                    elif test_scope == "ENV":
+                        tgt_envid = envid
+
+                    if conn_envid == tgt_envid:
+                        conn_id = connobj["{}ConnectorId".format(conn_type)]                
+                        conn_name = connobj["connectorName"]
+                        conn_envname = self.find_env_name(conn_envid, engine_name)                
+                        
+                        testapicall = "{}-connectors/{}/test".format(conn_type,conn_id)
+                        payload = connobj
+                        print_debug("payload={}".format(payload))
+                        
+                        try:
+                            apiresponse = self.post_api_response(engine_name, apikey, testapicall, payload, port=80)
+                            print_debug("apiresponse= {}".format(apiresponse))
+                            if apiresponse['response'] == "Connection Succeeded":
+                                print(" Env : {:35}, Connector : {:25} --> {}.".format(conn_envname,conn_name,apiresponse['response']))
+                            else:
+                                print(" Env : {:35}, Connector : {:25} --> {}.".format(conn_envname,conn_name,"Connection Failed"))
+                        except Exception as e:
+                            print(" Env : {:35}, Connector : {:25} --> {}.".format(conn_envname,conn_name,"Unable to test Connection"))
+                            print_debug(e)
+            except Exception as e:
+                print(" Unable to pull {} connector data".format(conn_type))
+                print_debug(e)        
+            print(" ")            
+            
+        else:
+            print(" Error connecting source engine {}".format(engine_name))
+       
     # @track
     def list_green_eng(self):
         if self.config.debug:

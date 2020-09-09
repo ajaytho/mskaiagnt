@@ -4,6 +4,7 @@ Masking AI Agent is built using python 3.x. It helps to
 
   - Intellegently load balance masking job across multiple engines
   - Sync job/environment/global objects/entire engine
+  - Backup / Restore masking engine metadata to / from file system
 
 
 ##### help
@@ -21,9 +22,6 @@ Masking AI Agent is built using python 3.x. It helps to
 ./mskaiagnt add-engine -m atmskengine01 -t 64 -s 10
 ./mskaiagnt add-engine -m atmskengine02 -t 64 -s 10
 ./mskaiagnt add-engine -m atmskengine03 -t 64 -s 10
-./mskaiagnt add-engine -m ajaydlpx6pri -t 64 -s 10
-./mskaiagnt add-engine -m rp6021m -t 64 -s 10
-./mskaiagnt add-engine -m rp6030m -t 64 -s 10
 ```
 
 ##### List engines
@@ -38,7 +36,7 @@ Masking AI Agent is built using python 3.x. It helps to
 
 ##### Validate VE
 ```shell
-../dxtoolkit2/dx_get_appliance -all -configfile ./dxtools.conf
+<FULL_PATH>/dxtoolkit2/dx_get_appliance -all -configfile ./dxtools.conf
 ```
 
 ##### Pull job list
@@ -46,36 +44,42 @@ Masking AI Agent is built using python 3.x. It helps to
 ./mskaiagnt pull-joblist -m all --username admin --password xxxxxx --protocol http
 ```
 
-##### Run job - simulataion
+##### Run job - simulation
 ```shell
-./mskaiagnt run-job -j maskjob6 -e mskdevenv --username admin --password xxxxxx
-./mskaiagnt -v run-job -j maskjob6 -e mskdevenv --username admin --password xxxxxx
+./mskaiagnt -v run-job -j maskjob6 -e mskdevenv --username admin --password xxxxxx --protocol http --dxtoolkit_path /home/ubuntu/WSL/dxtoolkit2
 ```
 
 ##### Real run
 ```shell
-./mskaiagnt -v run-job -j maskjob6 -e mskdevenv --username admin --password xxxxxx -r
+./mskaiagnt -v run-job -j maskjob6 -e mskdevenv --username admin --password xxxxxx --protocol http --dxtoolkit_path /home/ubuntu/WSL/dxtoolkit2 -r
 ```
 
 ##### Sync Eng
 ```shell
-./mskaiagnt sync-eng --srcmskengname atmskengine01 --tgtmskengname atmskengine02 -g --username admin --password xxxxxx
+./mskaiagnt sync-eng --srcmskengname atmskengine01 --tgtmskengname atmskengine02 -g --username admin --password xxxxxx --protocol https
 ```
 
 ##### Sync Env
 ```shell
-./mskaiagnt sync-env --srcmskengname atmskengine01 --srcenvname DB2LUW --tgtmskengname atmskengine01 --tgtenvname DB2LUW --username admin --password xxxxxx
+./mskaiagnt sync-env --srcmskengname atmskengine01 --tgtmskengname atmskengine02 --srcenvname mskuatenv --tgtenvname mskuatenv -g --username admin --password xxxxxx --protocol https
 ```
 
 ##### Sync Job
 ```shell
-./mskaiagnt sync-job --srcmskengname atmskengine01 --srcenvname mskdevenv --tgtmskengname atmskengine01 --tgtenvname mskdevenv --srcjobname maskjob6 --username admin --password xxxxxx
+./mskaiagnt sync-job --srcmskengname atmskengine01 --tgtmskengname atmskengine02 --srcenvname mskdevenv --tgtenvname mskdevenv --srcjobname maskjob6 -g --username admin --password xxxxxx --protocol https
 ```
 
 ##### Cleanup Engine
 ```shell
-./mskaiagnt cleanup-eng --mskengname atmskengine02 --username admin --password xxxxxx
+./mskaiagnt cleanup-eng --mskengname atmskengine02 --username admin --password xxxxxx --protocol https
 ```
+
+##### Backup Engine
+./mskaiagnt offline-backup-eng --mskengname atmskengine02 --backup_dir /home/ubuntu/WSL/test --username admin --password xxxxxx --protocol http
+
+##### Restore Engine
+./mskaiagnt offline-restore-eng --mskengname atmskengine02 --backup_dir /home/ubuntu/WSL/test/MMDDYYYY_HH24MISS --username admin --password xxxxxx --protocol http
+
 
 ### <a id="contribute"></a>How to Contribute
 

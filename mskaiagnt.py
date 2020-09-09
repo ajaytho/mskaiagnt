@@ -44,10 +44,13 @@ from mskai.aimasking import aimasking
 from mskai.banner import banner
 
 try:
-    if not os.path.exists('output'):
-        os.makedirs('output')        
+    output_dir = "{}/output".format(os.path.dirname(os.path.realpath(__file__)))
+    #print("output_dir = {}".format(output_dir))
+    os.chdir(os.path.dirname(os.path.realpath(__file__)))
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)        
 except Exception as e:
-    print("Unable to create ./output directory in current folder")
+    print("Unable to create {} directory in current folder".format(output_dir))
     print(str(e))
     raise
 
@@ -292,7 +295,7 @@ def sync_env(config, srcmskengname, srcenvname, tgtmskengname, tgtenvname, globa
 
     try:
         mskai = aimasking(config, srcmskengname=srcmskengname, srcenvname=srcenvname, tgtmskengname=tgtmskengname, tgtenvname=tgtenvname, globalobjsync=globalobjsync, username=username, password=password, protocol=protocol)
-        mskai.call_sync_env()
+        mskai.sync_env()
     except Exception as e:
         print("Error in MSK module")
         print(str(e))
@@ -352,7 +355,7 @@ def sync_eng(config, srcmskengname, tgtmskengname, globalobjsync, username, pass
 @click.option('--protocol', default='http', prompt='Enter protocol http|https to access Masking Engines',
               help='http protocol')                       
 @pass_config
-def sync_globalobj(config, srcmskengname, srcenvname, tgtmskengname, tgtenvname, globalobjsync, username, password, protocol):
+def sync_globalobj(config, srcmskengname, tgtmskengname, globalobjsync, username, password, protocol):
     """ This module will sync global objects between 2 engines"""
 
     print_banner()
