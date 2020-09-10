@@ -44,3 +44,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 ## [1.1.0] - 2020-09-03
 ### Added
 - Feature : Added support to backup / restore engine objects to / from filesystem
+
+## [1.1.1] - 2020-09-09
+### Added
+- Feature : Added support to adjust OTF connector when restoring from backup files
+

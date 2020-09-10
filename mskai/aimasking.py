@@ -1397,7 +1397,66 @@ class aimasking():
         self.bkp_syncable_objects("GLOBAL_OBJECT",bkp_main_dir)
         self.bkp_syncable_objects("FILE_FORMAT",bkp_main_dir)
         self.bkp_syncable_objects("MOUNT_INFORMATION",bkp_main_dir)
-        
+
+    def bkp_otf_job_mappings(self, bkp_main_dir, srcapikey=None):
+        src_engine_name = self.mskengname
+        otf_job_mapping_list = []
+
+        if srcapikey is None:
+            srcapikey = self.get_auth_key(src_engine_name)
+        print_debug("srcapikey={}".format(srcapikey))
+
+        if srcapikey is not None:
+            syncobjapicall = "environments?page_number=1&page_size=999"
+            syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
+
+            for envobj in syncobjapicallresponse['responseList']:
+                src_env_id = envobj['environmentId']
+                src_env_name = envobj['environmentName']
+
+                jobobjapicall = "masking-jobs?page_number=1&page_size=999&environment_id={}".format(src_env_id)
+                jobobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, jobobjapicall)
+
+                for jobobj in jobobjapicallresponse['responseList']:
+                    otf_job_dict = {}
+                    print_debug("{},{},{},{}".format(jobobj['maskingJobId'], jobobj['jobName'], src_env_name,
+                                                     jobobj['onTheFlyMasking']))
+                    if jobobj['onTheFlyMasking']:
+                        otf_jobid = jobobj['maskingJobId']
+                        otf_jobname = jobobj['jobName']
+                        srcconnectorId = jobobj['onTheFlyMaskingSource']['connectorId']
+                        srcconnectortype = jobobj['onTheFlyMaskingSource']['connectorType'].lower()
+
+                        srcconnectorName = self.find_conn_name_by_conn_id(srcconnectorId, srcconnectortype,
+                                                                          src_engine_name, srcapikey)
+                        srcconnectorenvId = self.find_env_id_by_conn_id(srcconnectorId, srcconnectortype,
+                                                                        src_engine_name, srcapikey)
+                        srcconnectorEnvname = self.find_env_name(srcconnectorenvId, src_engine_name)
+
+                        print_debug(
+                            "params = {},{},{},{}".format(srcconnectorId, srcconnectortype, src_engine_name, srcapikey))
+
+                        otf_job_dict['otf_jobid'] = otf_jobid
+                        otf_job_dict['otf_jobname'] = otf_jobname
+                        otf_job_dict['srcconnectorId'] = srcconnectorId
+                        otf_job_dict['srcconnectortype'] = srcconnectortype
+                        otf_job_dict['srcconnectorName'] = srcconnectorName
+                        otf_job_dict['srcconnectorEnvname'] = srcconnectorEnvname
+                        otf_job_dict['src_env_id'] = src_env_id
+                        otf_job_dict['src_env_name'] = src_env_name
+
+                        otf_job_mapping_list.append(otf_job_dict)
+
+            print_debug(" ")
+            print_debug("JobMapping: {}".format(otf_job_mapping_list))
+            otf_job_mapping_list_file = "{}/mappings/backup_{}.dat".format(bkp_main_dir, "otf_job_mapping")
+            with open(otf_job_mapping_list_file, 'wb') as fh:
+                pickle.dump(otf_job_mapping_list, fh)
+            print("Created backup of otf_job_mapping")
+
+        else:
+            print(" Error connecting source engine {}".format(src_engine_name))
+
     def offline_backup_eng(self):
         env_mapping = {}
         src_engine_name = self.mskengname       
@@ -1411,6 +1470,8 @@ class aimasking():
             self.bkp_roles(bkp_main_dir)
             print(" ")
             self.bkp_users(bkp_main_dir)
+            print(" ")
+            self.bkp_otf_job_mappings(bkp_main_dir,srcapikey)
             print(" ")
 
             syncobjapicall = "syncable-objects?page_number=1&page_size=999&object_type=ENVIRONMENT"
@@ -1559,14 +1620,6 @@ class aimasking():
                 
                 print_debug("Target Env Id = {}, Target App Id = {}".format(tgt_env_id, tgt_app_id))
 
-                ## Create dummy app to handle on the fly masking job/env
-                #cr_app_response = self.create_application(tgt_engine_name, self.src_dummy_conn_app)
-                #src_dummy_conn_app_id = cr_app_response['applicationId']
-                #
-                ## Create dummy app to handle on the fly masking job/env
-                #cr_env_response = self.create_environment(tgt_engine_name, src_dummy_conn_app_id, self.src_dummy_conn_env, src_env_purpose)
-                #src_dummy_conn_env_id = cr_env_response['environmentId']
-
                 if src_env_name == self.src_dummy_conn_env:
                     # Handle eror : {"errorMessage":"Source environment cannot be the same as environment"}
                     tgtapicall = "import?force_overwrite=true&environment_id={}".format(tgt_env_id)
@@ -1581,6 +1634,25 @@ class aimasking():
 
                 print(" Restored environment {}".format(env_bkp_dict['src_env_name']))
                 print(" ")
+
+            #Restore OTF_JOB_MAPPING
+            otf_job_mapping_file = "{}/mappings/backup_otf_job_mapping.dat".format(backup_dir)
+            with open(otf_job_mapping_file, 'rb') as otf1:
+                otf_job_mapping = pickle.load(otf1)
+            print_debug(" Job Env Mapping :{}".format(otf_job_mapping))
+
+            for otf_job in otf_job_mapping:
+                print_debug(otf_job)
+                jobname = otf_job['otf_jobname']
+                src_env_name = otf_job['src_env_name']
+                srcconn_name = otf_job['srcconnectorName']
+                conn_type = otf_job['srcconnectortype']
+                srcconnectorEnvname = otf_job['srcconnectorEnvname']
+                jobid = self.find_job_id(jobname,src_env_name,tgt_engine_name)
+                print_debug("Before upd_job_connector : {},{},{},{},{}".format(jobid,srcconn_name,conn_type,srcconnectorEnvname,tgt_engine_name))
+                self.upd_job_connector(jobid, srcconn_name, conn_type, srcconnectorEnvname, tgt_engine_name, srcconnectorEnvname,
+                                  None)
+            print(" ")
 
             #Restore Roles
             roleobj_bkp_dict_file_arr = os.listdir("{}/roleobjects".format(backup_dir))
@@ -1640,7 +1712,23 @@ class aimasking():
                     self.restore_userobj(userName, tgtapikey, tgt_engine_name, srcapiresponse, backup_dir)
                     #print(" Restored user {}".format(userName))
             print(" ")
-                    
+            del_tmp_env = 0
+            if del_tmp_env == 0:
+                print(" Delete temporary environment {} created for OTF jobs".format(self.src_dummy_conn_env))
+                dummy_conn_env_id = self.find_env_id(self.src_dummy_conn_env, tgt_engine_name)
+                self.del_env_byid(tgt_engine_name, dummy_conn_env_id, None)
+
+                print(" ")
+                print(" Delete temporary application {} created for OTF jobs".format(self.src_dummy_conn_app))
+                dummy_conn_app_id = self.find_app_id(self.src_dummy_conn_app, tgt_engine_name)
+                self.del_app_byid(tgt_engine_name, dummy_conn_app_id, None)
+                print(" ")
+
+            sync_scope = "ENGINE"
+            conn_type_list = ["database", "file", "mainframe"]
+            for conn_type in conn_type_list:
+                self.test_connectors(tgt_engine_name, conn_type, sync_scope, None)
+
             print(" Restore Engine {} - complete".format(tgt_engine_name))
             print(" ")
         else:
@@ -1925,9 +2013,9 @@ class aimasking():
         apikey = srcapikey
         i = 0
         if apikey is not None:
-            if paramconntype == "DATABASE":
+            if paramconntype.lower() == "database":
                 apicall = "database-connectors/{}".format(paramconnid)
-            elif paramconntype == "FILE":
+            elif paramconntype.lower() == "file":
                 apicall = "file-connectors/{}".format(paramconnid)
 
             try:
@@ -1945,9 +2033,9 @@ class aimasking():
         apikey = srcapikey
         i = 0
         if apikey is not None:
-            if paramconntype == "DATABASE":
+            if paramconntype.lower() == "database":
                 apicall = "database-connectors/{}".format(paramconnid)
-            elif paramconntype == "FILE":
+            elif paramconntype.lower() == "database":
                 apicall = "file-connectors/{}".format(paramconnid)
 
             try:
