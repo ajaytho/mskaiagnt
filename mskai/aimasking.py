@@ -1183,8 +1183,8 @@ class aimasking():
             print(" ")
 
         conn_type_list = ["database", "file", "mainframe"]
-        #for conn_type in conn_type_list:
-            #self.test_connectors(tgt_engine_name, conn_type, sync_scope, None)
+        for conn_type in conn_type_list:
+            self.test_connectors(tgt_engine_name, conn_type, sync_scope, None)
 
     def sync_job(self):
         src_engine_name = self.srcmskengname
