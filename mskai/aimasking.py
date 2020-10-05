@@ -40,6 +40,8 @@ class aimasking():
         self.config = config
         self.src_dummy_conn_app = "COMMON_OTF_MSKJOB_SRC_CONN_APP"
         self.src_dummy_conn_env = "COMMON_OTF_MSKJOB_SRC_CONN_ENV"
+        self.systemdomainlist = ['ACCOUNT_NO', 'ACCOUNT_TK', 'ADDRESS', 'ADDRESS_LINE2', 'BENEFICIARY_NO', 'BIOMETRIC', 'CERTIFICATE_NO', 'CITY', 'COUNTY', 'CREDIT CARD', 'CUSTOMER_NO', 'DOB', 'DRIVING_LC', 'EMAIL', 'FIRST_NAME', 'IP ADDRESS', 'LAST_NAME', 'NAME_TK', 'NULL_SL', 'PLATE_NO', 'PO_BOX', 'PRECINCT', 'RANDOM_VALUE_SL', 'RECORD_NO', 'SCHOOL_NM', 'SECURE_SHUFFLE', 'SECURITY_CODE', 'SERIAL_NO', 'SIGNATURE', 'SSN', 'SSN_TK', 'TAX_ID', 'TELEPHONE_NO', 'US_COUNTIES_SL', 'VIN_NO', 'WEB', 'ZIP']
+        self.systemalgorithmlist = ['ACCOUNT', 'ACCOUNT_TK', 'ADDRESS', 'ADDRESS', 'BUSINESS', 'COMMENT', 'CREDIT', 'DATE', 'DATE', 'DATE', 'DR', 'DUMMY_HOSPITAL_NAME_SL', 'EMAIL', 'FIRST', 'FULL_NM_SL', 'LAST_COMMA_FIRST_SL', 'LAST', 'NAME_TK', 'NULL', 'PHONE', 'RANDOM_VALUE_SL', 'SCHOOL', 'SECURE', 'SSN_TK', 'USCITIES_SL', 'US_COUNTIES_SL', 'USSTATE_CODES_SL', 'USSTATES_SL', 'WEB_URLS_SL', 'ZIP+4']
 
         #if not os.path.exists(self.enginelistfile):
         #    with open(self.enginelistfile, mode='a'): pass
@@ -80,6 +82,8 @@ class aimasking():
             self.tgtenvname = kwargs['tgtenvname']
         if "globalobjsync" in kwargs.keys():
             self.globalobjsync = kwargs['globalobjsync']
+        if "delextra" in kwargs.keys():
+            self.delextra = kwargs['delextra']                        
         if "protocol" in kwargs.keys():
             self.protocol = kwargs['protocol']
         else:
@@ -653,9 +657,9 @@ class aimasking():
             print(" ")
             print("",colored("Recommendation: 2",color='green',attrs=['reverse', 'blink', 'bold']))
             print(" Add job to following engines using sync_eng/sync_env/sync_job module")
-            print(" python ./mskaiagnt.py sync-eng --srcmskengname <SRC_IP> --tgtmskengname <TGT_IP> -g --username admin --password xxxxxx")
+            print(" ./mskaiagnt.py sync-eng")
             print(" OR")
-            print(" python ./mskaiagnt.py sync-env --srcmskengname <SRC_IP> --srcenvname {} --tgtmskengname <TGT_IP> --tgtenvname {} -g --username admin --password xxxxxx".format(self.envname,self.envname))
+            print(" ./mskaiagnt.py sync-env")
             print(" ")
             print(" Job can be added to following engines")
             idx = 0
@@ -1182,6 +1186,9 @@ class aimasking():
             self.del_app_byid(tgt_engine_name, dummy_conn_app_id, None)
             print(" ")
 
+        if self.delextra:
+            self.delete_extra_objects()
+
         conn_type_list = ["database", "file", "mainframe"]
         for conn_type in conn_type_list:
             self.test_connectors(tgt_engine_name, conn_type, sync_scope, None)
@@ -1216,7 +1223,69 @@ class aimasking():
         for conn_type in conn_type_list:
             self.test_connectors(tgt_engine_name, conn_type, sync_scope, tgt_env_name)
 
+    def delete_extra_objects(self):        
+        src_engine_name = self.srcmskengname
+        tgt_engine_name = self.tgtmskengname  
+        srcapikey = self.get_auth_key(src_engine_name)
+        print_debug("srcapikey={}".format(srcapikey))
+        tgtapikey = self.get_auth_key(tgt_engine_name)
+        print_debug("tgtapikey={}".format(tgtapikey))
+        print(" Cleanup Extra Environments/Applications")
+        if srcapikey is not None:
+            src_env_name_list = []
+            src_app_name_list = []
 
+            syncobjapicall = "environments?page_number=1&page_size=999"
+            syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)            
+            for envobj in syncobjapicallresponse['responseList']:
+                src_env_name = envobj['environmentName']
+                src_env_name_list.append(src_env_name)
+    
+            syncobjapicall = "applications?page_number=1&page_size=999"
+            syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
+            for appobj in syncobjapicallresponse['responseList']:
+                src_app_name = appobj['applicationName']
+                src_app_name_list.append(src_app_name)
+                
+        if tgtapikey is not None:
+            tgt_env_name_list = []
+            tgt_app_name_list = []
+
+            syncobjapicall = "environments?page_number=1&page_size=999"
+            syncobjapicallresponse = self.get_api_response(tgt_engine_name, tgtapikey, syncobjapicall)            
+            for envobj in syncobjapicallresponse['responseList']:
+                tgt_env_name = envobj['environmentName']
+                tgt_env_name_list.append(tgt_env_name)
+    
+            syncobjapicall = "applications?page_number=1&page_size=999"
+            syncobjapicallresponse = self.get_api_response(tgt_engine_name, tgtapikey, syncobjapicall)
+            for appobj in syncobjapicallresponse['responseList']:
+                tgt_app_name = appobj['applicationName']
+                tgt_app_name_list.append(tgt_app_name)
+
+        extra_env_name_list = list((Counter(tgt_env_name_list) - Counter(src_env_name_list)).elements())
+        extra_app_name_list = list((Counter(tgt_app_name_list) - Counter(src_app_name_list)).elements())
+
+        for env_name in extra_env_name_list:
+            envid = self.find_env_id(env_name, tgt_engine_name)
+            delapicall = "environments/{}".format(envid)
+            delapiresponse = self.del_api_response(tgt_engine_name, tgtapikey, delapicall)
+            if delapiresponse is None:
+                # May require To Handle dependents especially on-the-fly-masking interdependent env in future version
+                print(" Unable to delete Environment {}.".format(env_name))
+            else:             
+                print(" Environment {} deleted successfully.".format(env_name))
+        print(" ")
+        for app_name in extra_app_name_list:
+            appid = self.find_app_id(app_name, tgt_engine_name)
+            delapicall = "applications/{}".format(appid)
+            delapiresponse = self.del_api_response(tgt_engine_name, tgtapikey, delapicall)
+            if delapiresponse is None:
+                # May require To Handle dependents especially on-the-fly-masking interdependent env in future version
+                print(" Unable to delete Application {}.".format(app_name))
+            else:             
+                print(" Application {} deleted successfully.".format(app_name))                
+        print(" ")
     def upd_all_otf_jobs_src_connectors(self, src_engine_name, tgt_engine_name, src_env_name, tgt_env_name, sync_scope, jobname=None):
         delete_tmp_env = 0
         is_otf_job = 0
@@ -1795,7 +1864,10 @@ class aimasking():
             self.del_roles(src_engine_name,srcapikey)
             print(" ")
             print(" Deleting Domains")
-            self.del_domains(src_engine_name,srcapikey)
+            self.del_domains(src_engine_name, srcapikey)
+            print(" ")
+            print(" Deleting Algorithms")
+            self.del_algorithms(src_engine_name,srcapikey)            
 
             if i == 0:
                 print(" Engine {} cleanup completed.".format(src_engine_name))
@@ -2035,7 +2107,7 @@ class aimasking():
         if apikey is not None:
             if paramconntype.lower() == "database":
                 apicall = "database-connectors/{}".format(paramconnid)
-            elif paramconntype.lower() == "database":
+            elif paramconntype.lower() == "file":
                 apicall = "file-connectors/{}".format(paramconnid)
 
             try:
@@ -2061,7 +2133,7 @@ class aimasking():
             print_debug(syncobjapicallresponse)
             for connobj in syncobjapicallresponse['responseList']:                
                 print_debug(connobj)    
-                conn_id = connobj["databaseConnectorId"]
+                conn_id = connobj["{}ConnectorId".format(paramconntype)]
                 conn_name = connobj["connectorName"]
                 print_debug("conn_name:{},paramconnname:{},conn_id:{}".format(conn_name,paramconnname,conn_id))
                 if conn_name == paramconnname:
@@ -2193,17 +2265,39 @@ class aimasking():
         syncobjapicall = "domains?page_number=1&page_size=999"
         syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
         for domainobj in syncobjapicallresponse['responseList']:
-            src_domain_name = domainobj['domainName']
-            print_debug("Domain = {}".format(src_domain_name))
-            if src_domain_name not in ["LISTOFSYSTEMDOMAINS"]:
-                delapicall = "domains/{}".format(src_domain_name)
-                delapiresponse = self.del_api_response(src_engine_name, srcapikey, delapicall)
-                if delapiresponse is None:
-                    print(" Unable to delete Domain {}.".format(src_domain_name))
-                    i = 1
-                else:
-                    print(" Domain {} deleted successfully.".format(src_domain_name))
-                    # print(" ")
+            if "createdBy" in domainobj.keys():
+                src_domain_name = domainobj['domainName']
+                print_debug("Domain = {}".format(src_domain_name))
+                print_debug("domainobj = {}".format(domainobj))
+                if src_domain_name not in self.systemdomainlist:
+                    delapicall = "domains/{}".format(src_domain_name)
+                    delapiresponse = self.del_api_response(src_engine_name, srcapikey, delapicall)
+                    if delapiresponse is None:
+                        print(" Unable to delete Domain {}.".format(src_domain_name))
+                        i = 1
+                    else:
+                        print(" Domain {} deleted successfully.".format(src_domain_name))
+                        # print(" ")
+
+    def del_algorithms(self,src_engine_name,srcapikey):
+        if srcapikey is None:
+            self.get_auth_key(src_engine_name)
+        syncobjapicall = "algorithms?page_number=1&page_size=999"
+        syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
+        for algorithmobj in syncobjapicallresponse['responseList']:
+            if "createdBy" in algorithmobj.keys():
+                src_algorithm_name = algorithmobj['algorithmName']
+                print_debug("Algorithm = {}".format(src_algorithm_name))
+                print_debug("algorithmobj = {}".format(algorithmobj))
+                if src_algorithm_name not in self.systemalgorithmlist:
+                    delapicall = "algorithms/{}".format(src_algorithm_name)
+                    delapiresponse = self.del_api_response(src_engine_name, srcapikey, delapicall)
+                    if delapiresponse is None:
+                        print(" Unable to delete Algorithm {}.".format(src_algorithm_name))
+                        i = 1
+                    else:
+                        print(" Algorithm {} deleted successfully.".format(src_algorithm_name))
+                        # print(" ")
 
     def find_conn_details(self,otf_job_mappings,job_name,env_name):
         #print(" ")

@@ -49,3 +49,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 ### Added
 - Feature : Added support to adjust OTF connector when restoring from backup files
 
+## [1.1.2] - 2020-10-05
+### Added
+- Feature : Added support to cleanup extra environment and application from target engine during sync engine
+- Bugfix  : Only non-default Algorithm, Domain , Profile are deleted during cleanup.
+- Bugfix  : Handle file connectors for OTF jobs while adjusting connectors

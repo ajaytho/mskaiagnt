@@ -29,7 +29,7 @@
 #   -e      Environment Name of Masking job
 #   -j      Masking Job Id
 # ================================================================================
-VERSION = "1.1.1"
+VERSION = "1.1.2"
 
 import collections
 import os
@@ -314,9 +314,11 @@ def sync_env(config, srcmskengname, srcenvname, tgtmskengname, tgtenvname, globa
 @click.password_option('--password', '-p',
                        help='Masking mskaiagnt password to connect masking engines')
 @click.option('--protocol', default='http', prompt='Enter protocol http|https to access Masking Engines',
-              help='http protocol')                       
+              help='http protocol')
+@click.option('--delextra', default=False, is_flag=True, prompt='Delete extra objects from target',
+              help='Delete extra objects from target')                                    
 @pass_config
-def sync_eng(config, srcmskengname, tgtmskengname, globalobjsync, username, password, protocol):
+def sync_eng(config, srcmskengname, tgtmskengname, globalobjsync, username, password, protocol,delextra):
     """ This module will sync particular env between 2 engines"""
 
     print_banner()
@@ -331,9 +333,10 @@ def sync_eng(config, srcmskengname, tgtmskengname, globalobjsync, username, pass
         print_debug('globalobjsync = {0}'.format(globalobjsync))        
         print_debug('username      = {0}'.format(username))
         print_debug('protocol      = {0}'.format(protocol))
+        print_debug('delextra      = {0}'.format(delextra))
     globalobjsync = True
     try:
-        mskai = aimasking(config, srcmskengname=srcmskengname, tgtmskengname=tgtmskengname, globalobjsync=globalobjsync, username=username, password=password, protocol=protocol)
+        mskai = aimasking(config, srcmskengname=srcmskengname, tgtmskengname=tgtmskengname, globalobjsync=globalobjsync, username=username, password=password, protocol=protocol, delextra=delextra)
         mskai.sync_eng()
     except Exception as e:
         print("Error in MSK module")
