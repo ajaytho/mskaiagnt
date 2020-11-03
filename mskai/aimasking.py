@@ -5,6 +5,7 @@ import os
 import sys
 import datetime
 import pickle
+import inspect
 from collections import Counter
 from csv import DictReader
 from sys import exit
@@ -41,7 +42,7 @@ class aimasking():
         self.src_dummy_conn_app = "COMMON_OTF_MSKJOB_SRC_CONN_APP"
         self.src_dummy_conn_env = "COMMON_OTF_MSKJOB_SRC_CONN_ENV"
         self.systemdomainlist = ['ACCOUNT_NO', 'ACCOUNT_TK', 'ADDRESS', 'ADDRESS_LINE2', 'BENEFICIARY_NO', 'BIOMETRIC', 'CERTIFICATE_NO', 'CITY', 'COUNTY', 'CREDIT CARD', 'CUSTOMER_NO', 'DOB', 'DRIVING_LC', 'EMAIL', 'FIRST_NAME', 'IP ADDRESS', 'LAST_NAME', 'NAME_TK', 'NULL_SL', 'PLATE_NO', 'PO_BOX', 'PRECINCT', 'RANDOM_VALUE_SL', 'RECORD_NO', 'SCHOOL_NM', 'SECURE_SHUFFLE', 'SECURITY_CODE', 'SERIAL_NO', 'SIGNATURE', 'SSN', 'SSN_TK', 'TAX_ID', 'TELEPHONE_NO', 'US_COUNTIES_SL', 'VIN_NO', 'WEB', 'ZIP']
-        self.systemalgorithmlist = ['ACCOUNT', 'ACCOUNT_TK', 'ADDRESS', 'ADDRESS', 'BUSINESS', 'COMMENT', 'CREDIT', 'DATE', 'DATE', 'DATE', 'DR', 'DUMMY_HOSPITAL_NAME_SL', 'EMAIL', 'FIRST', 'FULL_NM_SL', 'LAST_COMMA_FIRST_SL', 'LAST', 'NAME_TK', 'NULL', 'PHONE', 'RANDOM_VALUE_SL', 'SCHOOL', 'SECURE', 'SSN_TK', 'USCITIES_SL', 'US_COUNTIES_SL', 'USSTATE_CODES_SL', 'USSTATES_SL', 'WEB_URLS_SL', 'ZIP+4']
+        self.systemalgorithmlist = ['AccountTK','NameTK','SSN SM','SsnTK','ACCOUNT', 'ACCOUNT_TK','ADDRESS', 'ADDRESS', 'BUSINESS', 'COMMENT', 'CREDIT', 'DATE', 'DATE', 'DATE', 'DR', 'DUMMY_HOSPITAL_NAME_SL', 'EMAIL', 'FIRST', 'FULL_NM_SL', 'LAST_COMMA_FIRST_SL', 'LAST', 'NAME_TK', 'NULL', 'PHONE', 'RANDOM_VALUE_SL', 'SCHOOL', 'SECURE', 'SSN_TK', 'USCITIES_SL', 'US_COUNTIES_SL', 'USSTATE_CODES_SL', 'USSTATES_SL', 'WEB_URLS_SL', 'ZIP+4']
 
         #if not os.path.exists(self.enginelistfile):
         #    with open(self.enginelistfile, mode='a'): pass
@@ -1154,7 +1155,7 @@ class aimasking():
             self.del_app_byid(tgt_engine_name, dummy_conn_app_id, None)
             print(" ")
 
-        conn_type_list = ["database", "file", "mainframe"]
+        conn_type_list = ["database", "file", "mainframe-dataset"]
         for conn_type in conn_type_list:
             self.test_connectors(tgt_engine_name, conn_type, sync_scope, tgt_env_name)        
     
@@ -1166,6 +1167,8 @@ class aimasking():
         sync_scope = "ENGINE"
         self.process_sync_env(src_engine_name, tgt_engine_name, globalobjsync, None, None, sync_scope)
 
+        self.add_debugspace()
+        self.add_debugspace()
         print(" Adjust Source Connector for OTF jobs(if any)")
         src_env_name = None
         tgt_env_name = None
@@ -1186,10 +1189,17 @@ class aimasking():
             self.del_app_byid(tgt_engine_name, dummy_conn_app_id, None)
             print(" ")
 
+        # Sync Roles
+        self.sync_roles(src_engine_name, tgt_engine_name)
+
+        print(" ")
+        # Sync Users
+        self.sync_users(src_engine_name, tgt_engine_name)
+
         if self.delextra:
             self.delete_extra_objects()
 
-        conn_type_list = ["database", "file", "mainframe"]
+        conn_type_list = ["database", "file", "mainframe-dataset"]
         for conn_type in conn_type_list:
             self.test_connectors(tgt_engine_name, conn_type, sync_scope, None)
 
@@ -1219,7 +1229,7 @@ class aimasking():
             self.del_app_byid(tgt_engine_name, dummy_conn_app_id, None)
             print(" ")
 
-        conn_type_list = ["database", "file", "mainframe"]
+        conn_type_list = ["database", "file", "mainframe-dataset"]
         for conn_type in conn_type_list:
             self.test_connectors(tgt_engine_name, conn_type, sync_scope, tgt_env_name)
 
@@ -1286,6 +1296,7 @@ class aimasking():
             else:             
                 print(" Application {} deleted successfully.".format(app_name))                
         print(" ")
+    
     def upd_all_otf_jobs_src_connectors(self, src_engine_name, tgt_engine_name, src_env_name, tgt_env_name, sync_scope, jobname=None):
         delete_tmp_env = 0
         is_otf_job = 0
@@ -1313,7 +1324,14 @@ class aimasking():
         if srcapikey is not None and tgtapikey is not None:
             syncobjapicall = "environments?page_number=1&page_size=999"
             syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
+            print_debug(" ")
+            print_debug(" ")
+            print_debug(" ")
             for envobj in syncobjapicallresponse['responseList']:
+                print_debug(" ")
+                print_debug(" ")
+                print_debug("ENV")
+                print_debug("++++++++++++++++++++++++++++++++++++++++++++++++++")
                 curr_env_id = envobj['environmentId']
                 curr_env_name = envobj['environmentName']
 
@@ -1594,7 +1612,7 @@ class aimasking():
         if tgtapiresponse is None:
             print(" Failed to restore role {}".format(roleName))
         else:
-            print(" Restored role: {}".format(roleName))
+            print(" Restored/Synced role: {}".format(roleName))
 
     def restore_userobj(self, userName, tgtapikey, tgt_engine_name, srcapiresponse, bkp_main_dir):
         tgtapicall = "users"
@@ -1616,6 +1634,71 @@ class aimasking():
                     print("Unable to create user: {}".format(userName))
             else:
                 print(" Restored user: {}".format(userName))
+
+    def sync_roles(self, src_engine_name, tgt_engine_name):
+        self.add_debugspace()
+        self.add_debugspace()
+        i = None
+        srcapikey = self.get_auth_key(src_engine_name)
+        tgtapikey = self.get_auth_key(tgt_engine_name)
+        if srcapikey is not None and tgtapikey is not None:
+            roleobjapicall = "roles?page_number=1&page_size=999"
+            roleobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, roleobjapicall)
+            for role_rec in roleobjapicallresponse['responseList']:
+                i = 1
+                roleId = role_rec['roleId']
+                roleName = role_rec['roleName']
+                roleNameNoSpace = roleName.replace(" ","_")
+                print_debug("Role: {}".format(roleName))
+                if roleName != "All Privileges":
+                    print_debug(" Syncing role {}".format(roleName))
+                    self.restore_roleobj(roleName, tgtapikey, tgt_engine_name, role_rec, None)
+        else:
+            print(" Error connecting source/target engine {}".format(src_engine_name, tgt_engine_name))
+        self.add_debugspace()
+        self.add_debugspace()
+
+    def sync_users(self, src_engine_name, tgt_engine_name):
+        i = None
+        srcapikey = self.get_auth_key(src_engine_name)
+        tgtapikey = self.get_auth_key(tgt_engine_name)
+        if srcapikey is not None and tgtapikey is not None:
+            userobjapicall = "users?page_number=1&page_size=999"
+            userobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, userobjapicall)
+            for user_rec in userobjapicallresponse['responseList']:
+                i = 1
+                userId = user_rec['userId']
+                userName = user_rec['userName']
+                userNameNoSpace = userName.replace(" ", "_")
+                isAdmin = user_rec['isAdmin']
+                user_rec['password'] = "Delphix-123"
+
+                print_debug("User payload: {}".format(user_rec))
+                if userName != "admin":
+                    print_debug(" User {}".format(userName))
+                    if isAdmin:
+                        print_debug("User role : Admin")
+                        self.restore_userobj(userName, tgtapikey, tgt_engine_name, user_rec, None)
+                    else:
+                        print_debug("User role : Non-Admin")
+                        userRoleId = user_rec['nonAdminProperties']['roleId']
+                        userRoleName = self.find_role_name(userRoleId,src_engine_name)
+                        tgtuserRoleId = self.find_role_id(userRoleName,tgt_engine_name)
+                        user_rec['nonAdminProperties']['roleId'] = tgtuserRoleId
+
+                        tgtenvlist = []
+                        envlist = user_rec['nonAdminProperties']['environmentIds']
+                        for envid in envlist:
+                            envName = self.find_env_name(envid,src_engine_name)
+                            tgtenvid = self.find_env_id(envName,tgt_engine_name)
+                            tgtenvlist.append(tgtenvid)
+                        user_rec['nonAdminProperties']['environmentIds'] = tgtenvlist
+                        self.restore_userobj(userName, tgtapikey, tgt_engine_name, user_rec, None)
+
+                else:
+                    print(" Ignore User {}".format(userName))
+        else:
+            print(" Error connecting source engine {}".format(src_engine_name))
 
     def offline_restore_eng(self):
         tgt_engine_name = self.mskengname       
@@ -1781,6 +1864,7 @@ class aimasking():
                     self.restore_userobj(userName, tgtapikey, tgt_engine_name, srcapiresponse, backup_dir)
                     #print(" Restored user {}".format(userName))
             print(" ")
+
             del_tmp_env = 0
             if del_tmp_env == 0:
                 print(" Delete temporary environment {} created for OTF jobs".format(self.src_dummy_conn_env))
@@ -1794,7 +1878,7 @@ class aimasking():
                 print(" ")
 
             sync_scope = "ENGINE"
-            conn_type_list = ["database", "file", "mainframe"]
+            conn_type_list = ["database", "file", "mainframe-dataset"]
             for conn_type in conn_type_list:
                 self.test_connectors(tgt_engine_name, conn_type, sync_scope, None)
 
@@ -1822,6 +1906,7 @@ class aimasking():
                 delapiresponse = self.del_api_response(src_engine_name, srcapikey, delapicall)
                 if delapiresponse is None:
                     # To Handle dependents especially on-the-fly-masking interdependent env
+                    print(" Unable to delete Environment {}. Added to retry queue.".format(src_env_name))
                     rerun_env_id_list.append({"src_env_id": src_env_id, "src_env_name": src_env_name})
                 else:             
                     print(" Environment {} deleted successfully.".format(src_env_name))
@@ -1867,7 +1952,13 @@ class aimasking():
             self.del_domains(src_engine_name, srcapikey)
             print(" ")
             print(" Deleting Algorithms")
-            self.del_algorithms(src_engine_name,srcapikey)            
+            self.del_algorithms(src_engine_name, srcapikey)
+            print(" ")
+            print(" Deleting Fileformats")
+            self.del_fileFormats(src_engine_name, srcapikey)
+            print(" Deleting Algorithms")
+            self.del_algorithms(src_engine_name, srcapikey)
+            print(" ")                             
 
             if i == 0:
                 print(" Engine {} cleanup completed.".format(src_engine_name))
@@ -2033,6 +2124,32 @@ class aimasking():
         else:
             print("Error connecting engine {}".format(engine_name))
 
+    def find_role_name(self, paramroleid, engine_name):
+        apikey = self.get_auth_key(engine_name)
+        if apikey is not None:
+            apicall = "roles/{}".format(paramroleid)
+            rolelist_response = self.get_api_response(engine_name, apikey, apicall)
+            return rolelist_response['roleName']
+        else:
+            print("Error connecting engine {}".format(engine_name))
+
+    def find_role_id(self, paramrolename, engine_name):
+        apikey = self.get_auth_key(engine_name)
+        i = 0
+        if apikey is not None:
+            apicall = "roles?page_number=1&page_size=999"
+            rolelist_response = self.get_api_response(engine_name, apikey, apicall)
+            for rolerec in rolelist_response['responseList']:
+                if rolerec['roleName'] == paramrolename:
+                    i = 1
+                    #print_debug("env id = {}".format(envname['environmentId']))
+                    return rolerec['roleId']
+            if i == 0:
+                print(" Error: unable to find role id for role {}".format(paramrolename))
+                return None
+        else:
+            print("Error connecting engine {}".format(engine_name))
+
     def find_env_purpose(self, paramenvnid, engine_name):
         apikey = self.get_auth_key(engine_name)
         if apikey is not None:
@@ -2082,6 +2199,7 @@ class aimasking():
             print("Error connecting engine {}".format(engine_name))
 
     def find_env_id_by_conn_id(self, paramconnid, paramconntype, engine_name, srcapikey):
+        print_debug("Parameters: {},{},{},{}".format(paramconnid, paramconntype, engine_name, srcapikey))
         apikey = srcapikey
         i = 0
         if apikey is not None:
@@ -2089,6 +2207,9 @@ class aimasking():
                 apicall = "database-connectors/{}".format(paramconnid)
             elif paramconntype.lower() == "file":
                 apicall = "file-connectors/{}".format(paramconnid)
+            elif paramconntype.lower() == "vsam":
+                apicall = "mainframe-dataset-connectors/{}".format(paramconnid)
+
 
             try:
                 conn_response = self.get_api_response(engine_name, apikey, apicall)
@@ -2109,6 +2230,8 @@ class aimasking():
                 apicall = "database-connectors/{}".format(paramconnid)
             elif paramconntype.lower() == "file":
                 apicall = "file-connectors/{}".format(paramconnid)
+            elif paramconntype.lower() == "vsam":
+                apicall = "mainframe-dataset-connectors/{}".format(paramconnid)
 
             try:
                 conn_response = self.get_api_response(engine_name, apikey, apicall)
@@ -2122,18 +2245,34 @@ class aimasking():
             print("Error connecting engine {}".format(engine_name))
 
     def find_connid_by_name(self, paramconnname, paramconntype, engine_name, srcapikey, src_env_id):
+        print_debug(" ")
+        print_debug(" ")
+        print_debug(" ")
+        print_debug("find_connid_by_name")
+        print_debug("===================")
+        #print(inspect.stack()[0][3])
+        #print(inspect.stack()[1][3])
         apikey = srcapikey
         print_debug("{},{},{},{}".format(paramconnname, paramconntype, engine_name, src_env_id))
         print_debug("apikey={}".format(apikey))
         try:
-            syncobjapicall = "{}-connectors?page_number=1&page_size=999&environment_id={}".format(paramconntype, src_env_id)
+            if paramconntype.lower() == "vsam":
+                syncobjapicall = "{}-connectors?page_number=1&page_size=999&environment_id={}".format("mainframe-dataset",
+                                                                                                      src_env_id)
+            else:
+                syncobjapicall = "{}-connectors?page_number=1&page_size=999&environment_id={}".format(paramconntype, src_env_id)
+
             print_debug("syncobjapicall: {}".format(syncobjapicall))
             syncobjapicallresponse = self.get_api_response(engine_name, apikey, syncobjapicall)
             #print("syncobjapicallresponse: {}".format(syncobjapicallresponse))
             print_debug(syncobjapicallresponse)
             for connobj in syncobjapicallresponse['responseList']:                
-                print_debug(connobj)    
-                conn_id = connobj["{}ConnectorId".format(paramconntype)]
+                print_debug(connobj)
+                if paramconntype.lower() == "vsam":
+                    conn_id = connobj["{}ConnectorId".format("mainframe-dataset")]
+                else:
+                    conn_id = connobj["{}ConnectorId".format(paramconntype)]
+
                 conn_name = connobj["connectorName"]
                 print_debug("conn_name:{},paramconnname:{},conn_id:{}".format(conn_name,paramconnname,conn_id))
                 if conn_name == paramconnname:
@@ -2239,6 +2378,43 @@ class aimasking():
                 else:
                     print(" User {} deleted successfully.".format(src_user_name))
                     # print(" ")
+
+    def del_fileFormats(self,src_engine_name,srcapikey):
+        if srcapikey is None:
+            self.get_auth_key(src_engine_name)
+        syncobjapicall = "file-formats?page_number=1&page_size=999"
+        syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
+        for fileFormatobj in syncobjapicallresponse['responseList']:
+            src_fileFormat_id = fileFormatobj['fileFormatId']
+            src_fileFormat_name = fileFormatobj['fileFormatName']
+            print_debug("fileFormat = {},{}".format(src_fileFormat_id, src_fileFormat_name))
+            if src_fileFormat_name != 'admin':
+                delapicall = "file-formats/{}".format(src_fileFormat_id)
+                delapiresponse = self.del_api_response(src_engine_name, srcapikey, delapicall)
+                if delapiresponse is None:
+                    print(" Unable to delete fileFormat {}.".format(src_fileFormat_name))
+                    i = 1
+                else:
+                    print(" fileFormat {} deleted successfully.".format(src_fileFormat_name))
+                    # print(" ")
+
+        syncobjapicall = "mainframe-dataset-formats?page_number=1&page_size=999"
+        syncobjapicallresponse = self.get_api_response(src_engine_name, srcapikey, syncobjapicall)
+        for fileFormatobj in syncobjapicallresponse['responseList']:
+            src_fileFormat_id = fileFormatobj['mainframeDatasetFormatId']
+            src_fileFormat_name = fileFormatobj['mainframeDatasetFormatName']
+            print_debug("fileFormat = {},{}".format(src_fileFormat_id, src_fileFormat_name))
+            if src_fileFormat_name != 'admin':
+                delapicall = "mainframe-dataset-formats/{}".format(src_fileFormat_id)
+                delapiresponse = self.del_api_response(src_engine_name, srcapikey, delapicall)
+                if delapiresponse is None:
+                    print(" Unable to delete fileFormat {}.".format(src_fileFormat_name))
+                    i = 1
+                else:
+                    print(" fileFormat {} deleted successfully.".format(src_fileFormat_name))
+                    # print(" ")
+
+
 
     def del_roles(self,src_engine_name,srcapikey):
         if srcapikey is None:

@@ -54,3 +54,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 - Feature : Added support to cleanup extra environment and application from target engine during sync engine
 - Bugfix  : Only non-default Algorithm, Domain , Profile are deleted during cleanup.
 - Bugfix  : Handle file connectors for OTF jobs while adjusting connectors
+
+## [1.1.3] - 2020-11-01
+### Added
+- Feature : Added Roles/Users to be synced during Engine sync
+- Bugfix  : Handle mainframe dataset fileformat cleanup.
+- Bugfix  : Handle mainframe dataset fileformat sync.
