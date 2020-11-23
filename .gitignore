@@ -29,3 +29,4 @@ pyvenv.cfg
 *.tmp
 *.unsaved
 .idea
+scripts

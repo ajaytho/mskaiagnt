@@ -1203,6 +1203,15 @@ class aimasking():
         for conn_type in conn_type_list:
             self.test_connectors(tgt_engine_name, conn_type, sync_scope, None)
 
+    def test_all_connectors(self):
+        tgt_engine_name = self.mskengname
+        sync_scope = 'ENGINE'
+        #srcapikey = self.get_auth_key(tgt_engine_name)
+        #print_debug("srcapikey={}".format(srcapikey))
+        conn_type_list = ["database", "file", "mainframe-dataset"]
+        for conn_type in conn_type_list:
+            self.test_connectors(tgt_engine_name, conn_type, sync_scope, None)
+
     def sync_job(self):
         src_engine_name = self.srcmskengname
         tgt_engine_name = self.tgtmskengname

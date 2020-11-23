@@ -60,3 +60,4 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 - Feature : Added Roles/Users to be synced during Engine sync
 - Bugfix  : Handle mainframe dataset fileformat cleanup.
 - Bugfix  : Handle mainframe dataset fileformat sync.
+- Feature : Added module to test all connectors at a time

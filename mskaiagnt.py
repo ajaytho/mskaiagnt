@@ -506,6 +506,39 @@ def run_job(config, jobname, envname, run, mock, username, password, protocol,dx
         print(str(e))
         return
 
+# test-connectors
+@cli.command()
+@click.option('--mskengname', default='', prompt='Enter Source Masking Engine name',
+              help='Source Masking Engine name')
+@click.option('--username', '-u', prompt='Enter Masking username',
+                       help='Masking mskaiagnt username to connect masking engines')
+@click.password_option('--password', '-p',
+                       help='Masking mskaiagnt password to connect masking engines')
+@click.option('--protocol', default='http', prompt='Enter protocol http|https to access Masking Engines',
+              help='http protocol')
+@pass_config
+def test_connectors(config, mskengname, username, password, protocol):
+    """ This module will cleanup engine"""
+
+    print_banner()
+    if config.debug:
+        globals.initialize()
+        globals.debug = config.debug
+
+    if config.verbose:
+        print_debug('Verbose mode enabled')
+        print_debug('mskengname = {0}'.format(mskengname))
+        print_debug('username      = {0}'.format(username))
+        print_debug('protocol      = {0}'.format(protocol))
+
+    try:
+        mskai = aimasking(config, mskengname=mskengname, username=username, password=password, protocol=protocol)
+        mskai.test_all_connectors()
+    except Exception as e:
+        print("Error in MSK module")
+        print(str(e))
+        return
+
 # list_green_eng
 @cli.command()     
 @click.option('--username', '-u', prompt='Enter Masking username',
