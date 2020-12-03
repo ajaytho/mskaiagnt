@@ -30,3 +30,4 @@ pyvenv.cfg
 *.unsaved
 .idea
 scripts
+pip-selfcheck.json
