@@ -61,3 +61,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 - Bugfix  : Handle mainframe dataset fileformat cleanup.
 - Bugfix  : Handle mainframe dataset fileformat sync.
 - Feature : Added module to test all connectors at a time
+
+## [1.1.4] - 2021-19-01
+### Added
+- Feature : Added support for queueing job on engine >= 6.0.5 when all engines are red

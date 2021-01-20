@@ -648,31 +648,88 @@ class aimasking():
                                                                        round(int(ind['maxavailablememory'])),
                                                                        ind['cpu']), 'red'))
             print(" ")
-            print(" All engines are busy. Running job {} of environment {} may cause issues.".format(self.jobname,
-                                                                                                       self.envname))
-            print(" Existing jobs may complete after sometime and create additional capacity to execute new job.")
-            print(" Please retry later.")
-            print(" ")
-            print("",colored("Recommendation: 1",color='green',attrs=['reverse', 'blink', 'bold']))
-            print(" Please retry later.")
-            print(" ")
-            print("",colored("Recommendation: 2",color='green',attrs=['reverse', 'blink', 'bold']))
-            print(" Add job to following engines using sync_eng/sync_env/sync_job module")
-            print(" ./mskaiagnt.py sync-eng")
-            print(" OR")
-            print(" ./mskaiagnt.py sync-env")
-            print(" ")
-            print(" Job can be added to following engines")
-            idx = 0
-            for engine in engine_list:
-                i = 0
-                for red in redcandidate:
-                    if engine['ip_address'] == red['ip_address']:
-                        i = 1
-                if i == 0:
-                    idx = idx + 1
-                    print(" {}) {}".format(idx,engine['ip_address']))
-            print(" ")
+            # Sort by max available memory
+            sorted_redcandidate = sorted(redcandidate, key=lambda k: k['maxavailablememory'], reverse=True)
+            for ind in sorted_redcandidate:
+                print(colored('{0:>1}{1:<35}{2:>20}{3:>20}'.format(" ", ind['ip_address'],
+                                                                   round(int(ind['maxavailablememory'])),
+                                                                   ind['cpu']), 'red'))
+            queue_enabled_eng_found = False
+            for ind in sorted_redcandidate:
+                engine_name = ind['ip_address']
+                apikey = self.get_auth_key(engine_name)
+                engine_version = self.find_engine_version(engine_name, apikey)
+                print_debug("engine_name = {}, engine_version = {}".format(engine_name, engine_version))
+                is_queue_enabled = self.chk_eng_queue_enabled(engine_version)
+                print_debug("is_queue_enabled = {}".format(is_queue_enabled))
+                #is_queue_enabled = True
+                #print_debug("is_queue_enabled = {}".format(is_queue_enabled))
+                if is_queue_enabled:
+                    queue_enabled_eng_found = True
+                    if self.run:
+                        jobid = self.find_job_id(self.jobname, self.envname, engine_name)
+                        chk_status = self.chk_job_running()
+                        if chk_status == 0:
+                            job_exec_response = self.exec_job(engine_name, apikey, jobid)
+                            if job_exec_response is not None:
+                                if job_exec_response['status'] == 'RUNNING':
+                                    executionId = job_exec_response['executionId']
+                                    print_green_on_white = lambda x: cprint(x, 'blue', 'on_white')
+                                    print_green_on_white(
+                                        " Execution of Masking job# {} with execution ID {} on Engine {} is in progress".format(
+                                            jobid, executionId, engine_name))
+                                else:
+                                    print_red_on_white = lambda x: cprint(x, 'red', 'on_white')
+                                    print_red_on_white(
+                                        " Execution of Masking job# {} on Engine {} failed".format(jobid, engine_name))
+                            else:
+                                print_red_on_white = lambda x: cprint(x, 'red', 'on_white')
+                                print_red_on_white(
+                                    " Execution of Masking job# {} on Engine {} failed".format(jobid, engine_name))
+                        else:
+                            print_red_on_white(
+                                " Job {} on Env {} is already running on engine {}. Please retry later".format(self.jobname,
+                                                                                                               self.envname,
+                                                                                                               chk_status))
+                        break
+                    else:
+                        queue_enabled_eng_found = True
+                        print_green_on_white = lambda x: cprint(x, 'blue', 'on_white')
+                        print_green_on_white(
+                            " Engine {} selected as probable candidate for execution of Masking job# {} [ Job not submitted ]".format(
+                                engine_name, self.jobname,))
+                        break
+                else:
+                    queue_enabled_eng_found = False
+                    print_debug("Proceed with next red engine")
+
+            print_debug("queue_enabled_eng_found = {}".format(queue_enabled_eng_found))
+            if not queue_enabled_eng_found:
+                print(" All engines are busy. Running job {} of environment {} may cause issues.".format(self.jobname,
+                                                                                                           self.envname))
+                print(" Existing jobs may complete after sometime and create additional capacity to execute new job.")
+                print(" Please retry later.")
+                print(" ")
+                print("",colored("Recommendation: 1",color='green',attrs=['reverse', 'blink', 'bold']))
+                print(" Please retry later.")
+                print(" ")
+                print("",colored("Recommendation: 2",color='green',attrs=['reverse', 'blink', 'bold']))
+                print(" Add job to following engines using sync_eng/sync_env/sync_job module")
+                print(" ./mskaiagnt.py sync-eng")
+                print(" OR")
+                print(" ./mskaiagnt.py sync-env")
+                print(" ")
+                print(" Job can be added to following engines")
+                idx = 0
+                for engine in engine_list:
+                    i = 0
+                    for red in redcandidate:
+                        if engine['ip_address'] == red['ip_address']:
+                            i = 1
+                    if i == 0:
+                        idx = idx + 1
+                        print(" {}) {}".format(idx,engine['ip_address']))
+                print(" ")
         else:
             redcandidate = []
             for item in unqualified_engines:
@@ -2306,6 +2363,35 @@ class aimasking():
         else:
             print("Error connecting engine {}".format(engine_name))
             return 0
+
+    def find_engine_version(self, engine_name, apikey=None):
+        if apikey is None:
+            apikey = self.get_auth_key(engine_name)
+        if apikey is not None:
+            apicall = "system-information"
+            systeminfo_response = self.get_api_response(engine_name, apikey, apicall)
+            print_debug("systeminfo_response = {}".format(systeminfo_response))
+            return systeminfo_response['version']
+        else:
+            print("Error connecting engine {}".format(engine_name))
+            return 0
+
+    def chk_eng_queue_enabled(self, engine_version):
+        version_arr = engine_version.split(".")
+        major_digit = int(version_arr[0])
+        minor_digit = int(version_arr[1])
+        micro_digit = int(version_arr[2])
+        patch_digit = int(version_arr[3])
+        print_debug("Major = {}, Minor = {}, Micro = {}, Patch = {}".format(major_digit, minor_digit, micro_digit, patch_digit))
+        queue_enabled_engine = False
+        if major_digit < 6:
+            queue_enabled_engine = False
+        elif major_digit == 6:
+            queue_enabled_engine = True if micro_digit > 4 else False
+        elif major_digit > 6:
+            queue_enabled_engine = True
+
+        return queue_enabled_engine
 
     def upd_job_connector(self, jobid, srcconn_name, conn_type, src_env_name, engine_name, tgt_env_name,srcconnectorEnvappname):
         return_status = 1

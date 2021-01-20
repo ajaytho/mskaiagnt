@@ -29,7 +29,7 @@
 #   -e      Environment Name of Masking job
 #   -j      Masking Job Id
 # ================================================================================
-VERSION = "1.1.3"
+VERSION = "1.1.4"
 
 import collections
 import os
