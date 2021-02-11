@@ -65,3 +65,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 ## [1.1.4] - 2021-19-01
 ### Added
 - Feature : Added support for queueing job on engine >= 6.0.5 when all engines are red
+
+## [1.1.5] - 2021-19-01
+### Added
+- Bugfix : Display correct message as job queued when all engines are busy

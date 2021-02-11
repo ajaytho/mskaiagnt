@@ -42,3 +42,6 @@
 
 # Cleanup Engine
 ./mskaiagnt cleanup-eng --mskengname atmskengine02 --username admin --password xxxxxx
+
+# Pull jobpool execution list
+./mskaiagnt pull-jobpoolexeclist --username admin --password xxxxxx --protocol https

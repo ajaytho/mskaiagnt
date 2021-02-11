@@ -650,8 +650,9 @@ class aimasking():
             print(" ")
             # Sort by max available memory
             sorted_redcandidate = sorted(redcandidate, key=lambda k: k['maxavailablememory'], reverse=True)
+            print_debug("Printing - sorted by memory")
             for ind in sorted_redcandidate:
-                print(colored('{0:>1}{1:<35}{2:>20}{3:>20}'.format(" ", ind['ip_address'],
+                print_debug(colored('{0:>1}{1:<35}{2:>20}{3:>20}'.format(" ", ind['ip_address'],
                                                                    round(int(ind['maxavailablememory'])),
                                                                    ind['cpu']), 'red'))
             queue_enabled_eng_found = False
@@ -679,9 +680,10 @@ class aimasking():
                                         " Execution of Masking job# {} with execution ID {} on Engine {} is in progress".format(
                                             jobid, executionId, engine_name))
                                 else:
+                                    curr_job_status = job_exec_response['status']
                                     print_red_on_white = lambda x: cprint(x, 'red', 'on_white')
                                     print_red_on_white(
-                                        " Execution of Masking job# {} on Engine {} failed".format(jobid, engine_name))
+                                        " Execution status of Masking job# {} on Engine {} : {}. It will start as soon as slots are free.".format(jobid, engine_name, curr_job_status))
                             else:
                                 print_red_on_white = lambda x: cprint(x, 'red', 'on_white')
                                 print_red_on_white(
@@ -693,15 +695,14 @@ class aimasking():
                                                                                                                chk_status))
                         break
                     else:
-                        queue_enabled_eng_found = True
                         print_green_on_white = lambda x: cprint(x, 'blue', 'on_white')
                         print_green_on_white(
                             " Engine {} selected as probable candidate for execution of Masking job# {} [ Job not submitted ]".format(
                                 engine_name, self.jobname,))
-                        break
+                    break
                 else:
                     queue_enabled_eng_found = False
-                    print_debug("Proceed with next red engine")
+                    print_debug("Engine {}. Queue not supported. Proceed with next red engine".format(engine_name))
 
             print_debug("queue_enabled_eng_found = {}".format(queue_enabled_eng_found))
             if not queue_enabled_eng_found:
@@ -953,6 +954,68 @@ class aimasking():
                                                                             latestexecid['status']))
                         fe.close()
         print_debug("File {} successfully generated".format(self.jobexeclistfile))
+
+    def pull_jobpoolexeclist(self):
+        processid = os.getpid()
+        bannertext = banner()
+        self.jobexeclistfile = "{}.{}".format(self.jobexeclistfile,processid)
+        try:
+            if os.path.exists(self.jobexeclistfile):
+                os.remove(self.jobexeclistfile)
+                fe = open(self.jobexeclistfile, "w")
+                fe.write("{},{},{},{},{},{},{},{}\n".format("jobid", "jobname", "jobmaxmemory", "reservememory",
+                                                            "environmentid", "environmentname", "ip_address",
+                                                            "jobstatus"))
+                fe.close()
+            else:
+                fe = open(self.jobexeclistfile, "w")
+                fe.write("{},{},{},{},{},{},{},{}\n".format("jobid", "jobname", "jobmaxmemory", "reservememory",
+                                                            "environmentid", "environmentname", "ip_address",
+                                                            "jobstatus"))
+                fe.close()
+        except:
+            print_debug("Error while deleting file ", self.jobexeclistfile)
+
+        engine_list = self.create_dictobj(self.enginelistfile)
+        for engine in engine_list:
+            print_debug("Engine : {}".format(engine))
+            engine_name = engine['ip_address']
+            apikey = self.get_auth_key(engine_name)
+            print_debug("apikey : {}".format(apikey))
+            if apikey is not None:
+                apicall = "environments?page_number=1&page_size=999"
+                envlist_response = self.get_api_response(engine_name, apikey, apicall)
+                for envname in envlist_response['responseList']:
+                    print_debug("envname : {}".format(envname))
+                    jobapicall = "masking-jobs?page_number=1&page_size=999&environment_id={}".format(envname['environmentId'])
+                    joblist_response = self.get_api_response(engine_name, apikey, jobapicall)
+                    joblist_responselist = joblist_response['responseList']
+                    for joblist in joblist_responselist:
+                        print_debug("joblist : {}".format(joblist))
+                        fe = open(self.jobexeclistfile, "a")
+                        jobexecapicall = "executions?job_id={}&page_number=1&page_size=999".format(joblist['maskingJobId'])
+                        jobexeclist_response = self.get_api_response(engine_name, apikey, jobexecapicall)
+                        jobexeclist_responselist = jobexeclist_response['responseList']
+                        if jobexeclist_responselist != []:
+                            latestexecid = max(jobexeclist_responselist, key=lambda ev: ev['executionId'])
+                            print_debug("latestexecid-status = {}".format(latestexecid['status']))
+                            if latestexecid['status'] == "RUNNING":
+                                fe.write("{},{},{},{},{},{},{},{}\n".format(joblist['maskingJobId'], joblist['jobName'],
+                                                                            joblist['maxMemory'], '0',
+                                                                            envname['environmentId'],
+                                                                            envname['environmentName'],
+                                                                            engine_name,
+                                                                            latestexecid['status']))
+                        fe.close()
+        print_debug("File {} successfully generated".format(self.jobexeclistfile))
+        jobexec_list = self.create_dictobj(self.jobexeclistfile)
+        print((colored(bannertext.banner_sl_box(text="JOB POOL EXECUTION LIST:"), 'yellow')))
+        print('{0:>1}{1:<30}{2:>5}{3:>30}{4:>30}{5:>12}'.format("", "Engine name", "Job Id", "Job Name", "Env Name", "Job Status"))
+
+        jobexec_list = self.create_dictobj(self.jobexeclistfile)
+        for row in jobexec_list:
+            print('{0:>1}{1:<30}{2:>5}{3:>30}{4:>30}{5:>12}'.format(" ", row['ip_address'], row['jobid'], row['jobname'], row['environmentname'], row['jobstatus']))
+
 
     def sync_globalobj(self):
         self.sync_syncable_objects("GLOBAL_OBJECT")

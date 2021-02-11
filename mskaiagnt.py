@@ -29,7 +29,7 @@
 #   -e      Environment Name of Masking job
 #   -j      Masking Job Id
 # ================================================================================
-VERSION = "1.1.4"
+VERSION = "1.1.5"
 
 import collections
 import os
@@ -501,6 +501,36 @@ def run_job(config, jobname, envname, run, mock, username, password, protocol,dx
     try:
         mskai = aimasking(config, jobname=jobname, envname=envname, run=run, mock=mock, username=username, password=password, protocol=protocol)
         mskai.run_job()
+    except Exception as e:
+        print("Error in MSK module")
+        print(str(e))
+        return
+
+# pull_jobpoolexeclist
+@cli.command()
+@click.option('--username', '-u', prompt='Enter Masking username',
+                       help='Masking mskaiagnt username to connect masking engines')
+@click.password_option('--password', '-p', default='mskenv',
+                       help='Masking mskaiagnt password to connect masking engines')
+@click.option('--protocol', default='http', prompt='Enter protocol http|https to access Masking Engines',
+              help='http protocol')
+@pass_config
+def pull_jobpoolexeclist(config, username, password, protocol):
+    """ This module will pull job pool exec list from all engines"""
+
+    print_banner()
+    if config.debug:
+        globals.initialize()
+        globals.debug = config.debug
+
+    if config.verbose:
+        print_debug('Verbose mode enabled')
+        print_debug('username = {0}'.format(username))
+        print_debug('protocol      = {0}'.format(protocol))
+
+    try:
+        mskai = aimasking(config, username=username, password=password, protocol=protocol)
+        mskai.pull_jobpoolexeclist()
     except Exception as e:
         print("Error in MSK module")
         print(str(e))
