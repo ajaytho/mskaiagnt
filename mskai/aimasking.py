@@ -1015,7 +1015,7 @@ class aimasking():
         jobexec_list = self.create_dictobj(self.jobexeclistfile)
         for row in jobexec_list:
             print('{0:>1}{1:<30}{2:>5}{3:>30}{4:>30}{5:>12}'.format(" ", row['ip_address'], row['jobid'], row['jobname'], row['environmentname'], row['jobstatus']))
-
+        os.remove(self.jobexeclistfile)
 
     def sync_globalobj(self):
         self.sync_syncable_objects("GLOBAL_OBJECT")
