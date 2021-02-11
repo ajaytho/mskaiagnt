@@ -69,3 +69,4 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 ## [1.1.5] - 2021-19-01
 ### Added
 - Bugfix : Display correct message as job queued when all engines are busy
+- Feature: Pull all running job list from all engine pools
